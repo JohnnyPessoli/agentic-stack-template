@@ -116,6 +116,13 @@ repository. It will include:
   affects, the persistent BMAD-selection rule, how to opt in or decline, how to
   remove the rule/turn the mode off, and how to ask naturally without naming a
   BMAD persona.
+- A plain-language explanation, in both languages, of how the tools
+  complement one another: BMAD supplies the method and specialist workflows;
+  Kent applies TDD using the project's existing test conventions; Alethe is
+  the lead that selects relevant guidance and decides whether to work directly
+  or orchestrate CLI workers. Make clear that Alethe is not BMAD itself, that a
+  worker is not automatically a BMAD persona, and that IDE capabilities affect
+  how guidance is applied.
 - A worked use case: prepare an existing application repository, use the
   architecture/product/development personas to refine a change, use Kent to
   discover and follow the project's existing test conventions, and optionally

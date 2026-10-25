@@ -1,0 +1,382 @@
+# SPEC: Template público `agentic-stack-template`
+
+**ID:** SPEC-20261025-001  
+**Data:** 2026-10-25  
+**Autor:** Usuário solicitante  
+**Status:** APROVADO
+
+## 1. Contexto
+
+### 1.1 Resumo
+
+Criar e publicar um repositório MIT com instaladores multiplataforma para
+preparar uma stack de agentes em projetos existentes, usando BMAD, as
+customizações genéricas de personas/Kent e Alethe como porta de entrada
+padrão.
+
+### 1.2 Problema que resolve
+
+As customizações atuais estão em caminhos absolutos da máquina do autor e
+contêm regras do Vendox. Outras pessoas não conseguem instalá-las com
+segurança e previsibilidade em seus projetos.
+
+### 1.3 Público e atores
+
+- Desenvolvedores que clonam o repositório e instalam o comando em sua própria
+  máquina.
+- O usuário local que executa `setup-agentic-stack` em um projeto.
+- Instaladores externos: BMAD, Alethe, Node/npm, `uv` e ferramentas de IDE.
+
+### 1.4 Fora do escopo
+
+- Implementar funcionalidades do Vendox ou NF Simplifica.
+- Incluir políticas pessoais, segredos, configuração local do autor ou regras
+  específicas do Vendox.
+- Copiar e republicar os arquivos do Alethe ou BMAD dentro deste repositório.
+- Executar testes reais de pagamento, banco de dados, emissão fiscal ou APIs de
+  produção.
+- Forçar uso de um framework de testes, arquitetura ou número de testes em
+  projetos-alvo.
+- Configurar Alethe como obrigatoriamente paralelo em todas as tarefas.
+- Garantir que toda persona BMAD seja executada em cada solicitação ou que uma
+  quantidade fixa de skills seja instalada.
+
+## 2. Requisitos funcionais
+
+### 2.1 Repositório e distribuição
+
+1. Criar projeto independente em
+   `C:\Users\johnn.JOHNNYPESSOLI\Documents\Projetos\agentic-stack-template`.
+2. Criar repositório público `JohnnyPessoli/agentic-stack-template` com
+   licença MIT própria.
+3. Fornecer README em português brasileiro e documentação equivalente em
+   inglês, explicando de forma robusta e simples a instalação, os passos de
+   uso, o que cada ferramenta faz, como Alethe e BMAD se complementam, exemplo
+   de uso, atualização, desinstalação, troubleshooting, custos e limitações.
+4. Não modificar o Git, arquivos ou alterações pendentes do NF Simplifica.
+5. Não substituir automaticamente os scripts ou o template pessoal existentes
+   em `~/.local/bin` e `~/.agentic-template`.
+
+### 2.2 Instalação do comando global
+
+**Entrada:** pessoa clona o repositório e executa o instalador adequado para
+PowerShell, CMD, Git Bash, macOS ou Linux.
+
+**Processamento:** o instalador coloca a cópia versionada do template em
+`~/.agentic-stack-template` (equivalente de usuário no Windows) e os wrappers
+em `~/.local/bin` (equivalente Windows). Atualizações mantêm essa separação.
+O PATH do usuário só é alterado após confirmação explícita.
+
+**Saída:** `setup-agentic-stack` pode ser chamado em outros terminais após
+reinício/recarregamento do ambiente. Se o usuário não permitir a alteração do
+PATH, os scripts continuam instalados e o instalador imprime instruções
+específicas para configuração manual.
+
+**Critérios adicionais:**
+
+- Instalação idempotente; conflitos com wrappers ou diretórios existentes são
+  preservados por padrão.
+- Não requer elevação de privilégios.
+- Atualização do comando obtém mudanças do repositório clonado e não apaga
+  dados locais do usuário.
+- A instalação inicial não altera o PATH nem arquivos globais sem
+  consentimento.
+
+### 2.3 Instalação em projeto-alvo
+
+O comando aceita o diretório atual como alvo padrão e um argumento explícito
+`--target <diretório>`. O destino deve existir, ser um diretório e não ser a
+raiz de volume/filesystem. O comando não apaga arquivos do projeto.
+
+Opções obrigatórias:
+
+| Opção | Comportamento |
+| --- | --- |
+| `--target <diretório>` | Seleciona explicitamente o projeto-alvo |
+| `--tools <lista>` | Sobrescreve a detecção com IDs de ferramenta permitidos |
+| `--dry-run` | Mostra operações previstas; não grava, não instala ferramentas e não muda configurações globais |
+| `--force` | Permite substituir somente arquivos de template identificados como conflito |
+| `--install-uv` | Autoriza instalar `uv` no ambiente do usuário em modo não interativo |
+| `--skip-alethe` | Não instala Alethe nem altera seu estado global |
+| `--enable-alethe-everywhere` | Em modo não interativo, autoriza ativar Alethe globalmente e adicionar a regra BMAD |
+| `--help` | Exibe uso, requisitos e opções sem modificar o ambiente |
+
+Opções mutuamente incompatíveis devem falhar antes de qualquer alteração. Em
+execução não interativa, não inferir consentimento para mudança de PATH,
+instalação de `uv` ou ativação global de Alethe.
+
+### 2.4 Pré-requisitos
+
+- Git para clonar o repositório e fixar a revisão de Alethe.
+- Node.js 20.12+ e npm/npx para BMAD.
+- Python 3.10+ e `uv` para BMAD; `uv` ausente exige confirmação antes da
+  instalação oficial ou `--install-uv` explícito.
+- Pelo menos uma ferramenta compatível com a instalação BMAD.
+- Acesso de rede ao npm e aos repositórios upstream no momento da instalação.
+
+Não instalar Node ou Python automaticamente. Se estiverem ausentes ou abaixo
+da versão necessária, informar a versão detectada e as instruções oficiais para
+corrigir; não prosseguir como se a etapa tivesse sucesso.
+
+### 2.5 BMAD e ferramentas
+
+1. Usar a versão estável `bmad-method@6.12.4`, não a linha v7 alpha.
+2. O idioma padrão de comunicação e documentação gerada pelo BMAD é português.
+3. Detectar ferramentas compatíveis e configurar somente as detectadas.
+4. Permitir seleção explícita por `--tools`, validada por allowlist.
+5. Se nenhuma ferramenta for detectada ou selecionada, falhar antes da
+   instalação BMAD, explicando as opções suportadas.
+6. Reportar as ferramentas selecionadas e o resultado real do instalador. Não
+   anunciar “29 skills” ou outra quantidade fixa sem validar o resultado da
+   versão instalada.
+7. Antes de implementar o comando, validar no pacote fixado os nomes de flags,
+   IDs de ferramentas, instalação não interativa e suporte aos dois idiomas.
+
+### 2.6 Templates e Kent TDD
+
+- Adaptar os overrides existentes para Winston (arquitetura), Amelia
+  (desenvolvimento) e John (produto), sem fatos Vendox.
+- Manter Kent como especialista TDD, com fluxo Red-Green-Refactor.
+- Kent deve identificar instruções, testes e runner existentes no projeto-alvo
+  antes de sugerir ou executar testes; não impor Vitest, diretórios,
+  arquitetura, limiares ou contagens predefinidos.
+- Não criar `AGENTS.md`, `CONTEXT.md` ou outros arquivos de instrução do projeto
+  automaticamente se já não forem necessários à integração.
+- Copiar apenas arquivos de template versionados; não incluir o `config.user`
+  pessoal da fonte original.
+
+### 2.7 Alethe como orquestrador padrão
+
+1. Por padrão, instalar somente a skill Alethe a partir do repositório upstream
+   `Kc1t/alethe-orchestrate-skill`, fixada no commit
+   `3268b6d115cb27d58ebf3409de6c49d55f919477`. Não copiar o restante do
+   repositório upstream.
+2. `--skip-alethe` pula instalação e configuração global.
+3. Após instalar Alethe, oferecer ativação global do modo
+   `mode on --everywhere`. Explicar antes que isso afeta todos os projetos do
+   usuário, sem expiração. Nunca ativar silenciosamente.
+4. Com consentimento, adicionar por interface documentada do Alethe uma regra
+   aditiva equivalente a:
+
+   > Quando o projeto tiver BMAD instalado, use os fluxos e personas BMAD
+   > relevantes sem exigir que a pessoa os nomeie. Atue como líder e escolha
+   > entre trabalhar diretamente ou orquestrar workers de acordo com o tamanho
+   > e a decomposição da tarefa.
+
+5. Preservar regras e preferências Alethe existentes; não usar opções que as
+   limpem ou substituam. Se a regra já existir, não duplicá-la. Se não puder
+   ser adicionada sem remover regras, informar a limitação e instruir resolução
+   manual; não reportar ativação completa.
+6. Sem consentimento, não mudar configuração global e mostrar a instrução
+   única suportada para ativar depois.
+7. Em execução não interativa, só ativar globalmente se
+   `--enable-alethe-everywhere` estiver presente. A instalação do Alethe e a
+   ativação global são estados distintos no resumo final.
+8. Não exigir que o usuário chame Kent, Winston, Amelia ou John pelo nome.
+   Alethe pode tratar diretamente tarefas pequenas/acopladas; deve selecionar
+   o fluxo BMAD pertinente quando apropriado e pode delegar trabalho
+   independente conforme suas regras e configurações. Não prometer execução de
+   uma persona BMAD em todas as tarefas.
+9. Não alterar configurações globais do usuário fora do consentimento descrito
+   e da interface oficial do Alethe.
+10. Documentar como desligar o modo global e remover apenas a regra adicionada,
+    sem apagar regras preexistentes.
+
+### 2.8 Saída e erros
+
+| Situação | Resultado observável |
+| --- | --- |
+| Configuração concluída | Exit code `0`; resumo separa sucesso, skip e ativação global |
+| Argumento inválido, ferramenta desconhecida ou opções incompatíveis | Não executar alterações; exit code não zero e mostrar uso |
+| Destino inválido ou inacessível | Não instalar; explicar o caminho e a correção |
+| Conflito sem `--force` | Preservar arquivos e informar cada conflito |
+| `uv` ausente sem consentimento em modo interativo | Pausar para decisão |
+| `uv` ausente sem `--install-uv` em modo não interativo | Não prosseguir com BMAD; informar instalação |
+| Falha em BMAD, Alethe ou alteração autorizada de modo global | Reportar etapa específica e código não zero; não afirmar sucesso completo |
+| Alethe instalado, mas consentimento global recusado | Considerar configuração local concluída e reportar “Alethe global não ativado” |
+| `--dry-run` | Exit code `0` se opções/destino forem válidos; listar ações e não produzir efeitos |
+
+Mensagens e instruções próprias do comando ficam em português; preservar a
+saída original dos instaladores quando necessária para diagnóstico, sem
+capturar ou persistir credenciais.
+
+## 3. Segurança e privacidade
+
+| Item | Resposta |
+| --- | --- |
+| 1. Dados e finalidade | Entradas: argumentos, caminhos, comandos encontrados no PATH e evidências mínimas de instalação das IDEs para detecção. Finalidade: selecionar integração e arquivos de destino. Saídas: arquivos de configuração e estado de modo Alethe se autorizado. Não coletar dados fiscais, empresariais, pessoais de destinatários nem conteúdo de `.env`. Não há linhas do inventário NF Simplifica afetadas: este é um repositório independente de tooling. |
+| 2. Atores e autorização por recurso | A pessoa local autoriza execução e alterações. Não há autenticação de rede nem serviço remoto próprio. Usar as permissões do usuário atual; nunca elevar privilégios. `--force`, `--install-uv`, edição de PATH e modo global Alethe precisam da autorização definida nesta spec. |
+| 3. Fronteiras e fluxo | Terminal do usuário → scripts locais → npm/GitHub upstream → arquivos do projeto e, se consentido, configuração global Alethe. BMAD/Alethe executam seu próprio código e podem chamar CLIs de IA depois de instalados; isso é comportamento externo. Sem navegador/BFF/API/banco/fornecedor fiscal no NF Simplifica. |
+| 4. Sigilo do fornecedor | Não aplicável — a ferramenta não trata NF Simplifica, fornecedor fiscal, XML/PDF fiscal, integrações ou contratos de fornecedores. Não importar os documentos/políticas de fornecedor do projeto de origem. |
+| 5. Segredos e material criptográfico | Nenhum segredo é necessário ou criado pelo template. Não ler `.env`, credenciais npm, tokens Git, configuração de sessão de IDE, chaves ou certificados. Processos upstream podem usar credenciais já configuradas pelo usuário; não inspecioná-las, registrá-las ou copiá-las. |
+| 6. Entradas externas e validações | Validar opções por allowlist, caminho canônico, existência/diretório/escopo do destino e parâmetros separados sem concatenação de shell. Restringir fontes e versões upstream; rejeitar IDs de ferramenta desconhecidos. Testar espaços, Unicode, aspas, metacaracteres, diretórios com `..`, raiz de volume, repositório ausente e respostas de subprocessos com falha. Não aceitar URL arbitrária para baixar/executar. |
+| 7. Erros, logs, auditoria e telemetria | Não instalar telemetria própria nem persistir logs. Exibir progresso e códigos de saída; evitar ecoar tokens, conteúdo de `.env`, regras Alethe existentes ou saídas que contenham segredo. Mostrar caminho do alvo somente localmente. Saída upstream pode ser exibida para diagnóstico após revisão; sem sucesso fictício. |
+| 8. Armazenamento, retenção e descarte | Arquivos do stack ficam no alvo e na pasta de instalação local do usuário; a regra Alethe consentida fica no armazenamento mantido pelo próprio Alethe. Não armazenar conteúdo de projeto como cache próprio. Arquivos temporários de clone/download são removidos ao final, sem limpar dados não pertencentes ao processo. Sem política fiscal/LGPD ou retenção de dados de produto aplicável. |
+| 9. Abuso, indisponibilidade e recuperação | Alvo restrito ao caminho informado; não operar na raiz do filesystem; sem elevação. Sem retentativa ilimitada. Falha de rede/serviço externo encerra a etapa com erro claro. Execuções simultâneas devem evitar escrita parcial (lock ou staging/rename atômico). Custos de workers podem ocorrer depois; Alethe conserva seu modo de custo padrão e o README explica consumo potencial. |
+| 10. Testes negativos e critérios de aceite | VAL-01..03, 05..07, 09..10 e 12 não aplicáveis — não há isolamento entre empresas, APIs, arquivos fiscais, armazenamento de produto, filas, cobrança ou backup. Testar analogamente a VAL-04/08/11: marcador sintético de segredo ausente em saída; falha e configuração inválida não concedem acesso nem reportam sucesso; testar argumentos maliciosos, conflito, falta de consentimento, `--dry-run`, falha externa e regra Alethe já existente/limite de regras. Evidência: teste local/mock e GitHub Actions; smoke test local Windows. |
+| 11. Riscos residuais e dependências | Risco de cadeia de suprimentos em npm/GitHub e alterações upstream; mitigado com versão/commit fixos e validação de integridade disponível. O usuário autoriza explicitamente mudanças globais. A regra Alethe é global e pode afetar outros projetos; o modo pode resultar em uso/custo de workers. Dependências podem ficar indisponíveis. Não há controles da matriz NF Simplifica afetados e nenhuma alegação de segurança do produto é feita. |
+
+Controles afetados na matriz NF Simplifica: nenhum. Inventário de dados NF
+Simplifica: nenhuma linha afetada.
+
+## 4. Contrato da interface
+
+### 4.1 Comando
+
+```text
+setup-agentic-stack [--target <diretório>] [--tools <lista>] [--dry-run]
+                    [--force] [--install-uv] [--skip-alethe]
+                    [--enable-alethe-everywhere] [--help]
+```
+
+- Sem `--target`, resolver o diretório de trabalho atual e exibir o destino.
+- Valores e caminhos devem ser encaminhados como argumentos individuais, não
+  interpolados em comandos.
+- Exit code `0` significa que as etapas requeridas foram concluídas; qualquer
+  falha requerida retorna código não zero. Ativação Alethe recusada não é
+  falha da instalação por projeto, mas aparece explicitamente no resumo.
+
+### 4.2 Efeitos por destino
+
+Escrever apenas arquivos enumerados pelo BMAD ou pelos templates do stack:
+
+- `_bmad/custom/` para overrides de equipe, sem sobrescrever por padrão;
+- skill Kent nos diretórios reconhecidos pelo instalador de habilidades;
+- skill Alethe somente nos diretórios reconhecidos para os tools selecionados;
+- sem arquivos de projeto adicionais para orientação Alethe, salvo se a
+  documentação upstream demonstrar que são necessários e a spec for atualizada
+  antes de implementá-los.
+
+Não inventar uma interface que o BMAD/Alethe upstream não aceite. Se as
+interfaces fixadas não suportarem os requisitos de idioma, seleção, pinagem ou
+regra persistente, interromper essa parte e atualizar esta spec antes de
+prosseguir.
+
+## 5. Arquitetura e dependências
+
+```text
+Clone GitHub → instalador por OS → comando global em ~/.local/bin
+                                      ↓
+                         projeto-alvo + confirmação
+                           ↙       ↓       ↘
+                    BMAD 6.12.4  Kent   Alethe SHA pinado
+                                            ↓ consentimento global
+                                  Alethe always + regra BMAD
+```
+
+| Dependência | Versão/revisão | Propósito | Falha |
+| --- | --- | --- | --- |
+| Node.js/npm | Node 20.12+ | Executar o instalador BMAD | Interromper BMAD e indicar instalação oficial |
+| Python | Python 3.10+ | Scripts do BMAD e configuração do Alethe | Não instalar automaticamente; indicar requisito |
+| `uv` | versão oficial disponível no momento, validada antes de uso | Setup/scripts BMAD | Pedir consentimento ou exigir `--install-uv` |
+| `bmad-method` | 6.12.4 | Método e agentes/workflows BMAD | Reportar erro sem resumo de sucesso |
+| `Kc1t/alethe-orchestrate-skill` | commit fixo acima | Skill/orquestrador e ativação de modo | Não alternar para `main`; reportar falha |
+| Ferramentas de IDE | IDs allowlisted reconhecidos pelo BMAD 6.12.4 | Instalação das skills/integrações | Detecção documentada ou override explícito |
+| Git | versão presente no sistema | Clone da instalação e revisão Alethe | Instruir instalação oficial |
+
+## 6. Testes e validação
+
+### 6.1 Casos críticos
+
+| ID | Cenário | Resultado esperado | Evidência |
+| --- | --- | --- | --- |
+| T-01 | Instalação em projeto descartável vazio | BMAD e arquivos do stack nos caminhos esperados, PT configurado | Smoke test controlado |
+| T-02 | Projeto com arquivos de customização conflitantes | Sem `--force`, preservar bytes e informar conflitos | Fixture + teste |
+| T-03 | Mesmo comando repetido | Sem duplicar skills/regras nem substituir customizações | Fixture + smoke |
+| T-04 | `--dry-run` com etapas configuráveis | Nenhum arquivo, download, PATH ou modo global alterado | Comparação do estado antes/depois |
+| T-05 | Sem IDE detectada e sem override | Falhar antes de invocar BMAD | Mock de subprocesso |
+| T-06 | `--tools` com ID inválido ou metacaractere | Rejeitar antes da execução externa | Teste de entrada |
+| T-07 | `uv` ausente sem consentimento | Interromper BMAD e informar o passo necessário | Fixture/mock |
+| T-08 | `uv` ausente com `--install-uv` | Executar instalador oficial com o consentimento declarado | Mock; smoke apenas se consentido |
+| T-09 | Alethe instalado, modo global recusado | Nenhuma alteração global; relatório explicita estado | Fixture/mock |
+| T-10 | Alethe global autorizado | Uma regra BMAD adicionada, regras existentes intactas; modo global ligado | Teste isolado de configuração |
+| T-11 | Regra já existe ou limite upstream atingido | Não duplicar, limpar ou substituir; reportar ativação incompleta | Fixture/mock |
+| T-12 | Instalador externo retorna erro ou rede cai | Não exibir sucesso completo; código não zero | Mock de processo |
+| T-13 | Caminho contém espaços, Unicode ou shell metacharacters | Resolver e encaminhar literalmente sem executar conteúdo do caminho | Testes em cada OS |
+| T-14 | Marcador sintético de segredo em ambiente não usado pelo tool | Marcador não aparece na saída nem em artefatos gerados | Teste local |
+| T-15 | Comando global via PowerShell, CMD, Git Bash, macOS e Linux | Encaminha argumentos e retorna status correto | GitHub Actions por OS |
+
+### 6.2 Critérios de aceite mensuráveis
+
+- Todos os casos T-01..T-15 aplicáveis passam.
+- GitHub Actions valida Windows, macOS e Linux; nenhum sistema é anunciado como
+  suportado se o job correspondente falhar.
+- Instalação e smoke test são executados apenas em diretórios temporários
+  descartáveis.
+- O repositório não contém Vendox, tokens, secrets, `config.user.toml` nem
+  arquivos Alethe copiados; buscas e inspeção de licença registradas.
+- README PT/EN contém os passos da instalação global e do setup por projeto,
+  comandos e opções reais, troubleshooting e pelo menos um exemplo completo
+  com entrada, decisões do Alethe, uso de BMAD/Kent, verificação e resultado.
+- README PT/EN explica didaticamente as responsabilidades distintas e a
+  complementaridade entre BMAD, Kent, Alethe e workers CLI; não afirma que um
+  worker seja uma persona BMAD nem que Alethe invoque personas em cada prompt.
+- A revisão de licenças atribui MIT ao template e diferencia as dependências
+  externas.
+
+## 7. Documentação: complementaridade e caso de uso
+
+As documentações PT/EN devem explicar estes papéis sem sugerir que uma
+ferramenta substitui a outra:
+
+| Ferramenta | Papel na stack | Limite a explicar |
+| --- | --- | --- |
+| BMAD | Método, workflows e personas especializadas | Não é o orquestrador de workers desta stack |
+| Kent | Persona TDD que respeita o runner e convenções do projeto | Não impõe framework nem substitui os testes do projeto |
+| Alethe | Lead padrão; escolhe orientação pertinente e trabalho direto ou dividido | Não é uma persona BMAD e não delega toda tarefa automaticamente |
+| Worker CLI | Executor externo de uma unidade delegada pelo Alethe | Não equivale automaticamente a uma persona/workflow BMAD |
+
+Fluxo conceitual a incluir:
+
+```text
+Pedido em linguagem natural
+          ↓
+Alethe (lead padrão)
+          ↓
+Consulta BMAD/Kent quando aplicável
+          ↓
+Decide: trabalho direto ou unidades para workers CLI
+          ↓
+Valida o resultado e relata decisões/pendências
+```
+
+Exemplo sintético requerido: em um repositório existente de catálogo de livros,
+a pessoa pede em linguagem natural uma exportação CSV dos itens filtrados.
+Mostrar:
+
+1. Como clonar/instalar o comando e preparar o projeto.
+2. Alethe ativo como lead após opt-in global, com regra condicionada à presença
+   de BMAD.
+3. Explicação de que Alethe lidera; BMAD fornece método/workflows, Kent
+   orientação TDD e workers CLI executam tarefas delegadas sem serem
+   automaticamente personas BMAD.
+4. Alethe identificando decisões de contrato/arquitetura, selecionando
+   orientações BMAD e Kent quando pertinentes, sem exigir que a pessoa cite os
+   nomes.
+5. Alethe decidindo se trabalha diretamente ou divide unidades independentes,
+   sem workers forçados numa mudança pequena.
+6. Validação e resumo de arquivos, decisões, testes e pendências.
+
+Não usar nomes, dados, regras, repositórios ou métricas do Vendox/NF Simplifica
+no exemplo. Deixar claro que a seleção de persona depende do contexto e das
+capacidades da IDE; validar qualitativamente o fluxo em pelo menos uma IDE
+antes de afirmar integração automática ampla.
+
+## 8. Itens pendentes de validação técnica
+
+1. `bmad-method@6.12.4`: confirmar flags reais para IDEs, idioma de comunicação
+   e idioma dos documentos; caso algum flag não exista, atualizar spec e pedir
+   decisão antes de substituir por outro método.
+2. Instalação de skill Alethe na revisão pinada: confirmar sintaxe suportada e
+   cópia apenas de `skills/alethe` para os diretórios das ferramentas.
+3. Alethe: confirmar interface oficial para `mode on --everywhere --rule`,
+   comportamento idempotente, leitura de regras existentes e caminho de
+   política global. Não limpar regras.
+4. Detecção e caminhos de instalação de cada integração BMAD v6.12.4 nos três
+   sistemas operacionais.
+
+## Aprovação
+
+| Revisor | Status | Data | Comentários |
+| --- | --- | --- | --- |
+| Usuário solicitante | ✅ Aprovado | 2026-10-25 | Solicitou documentação robusta e didática, incluindo como Alethe e BMAD se complementam. |
