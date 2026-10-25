@@ -1,0 +1,39 @@
+name: checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: Check scripts and unit tests
+        run: npm run check
+      - name: Verify setup help
+        run: node bin/setup-agentic-stack.mjs --help
+      - name: Verify global install dry-run
+        run: node scripts/install.mjs --dry-run
+      - name: Check POSIX installer syntax
+        if: runner.os != 'Windows'
+        run: sh -n install.sh
+      - name: Check Windows PowerShell installer entrypoint
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./install.ps1 --help
+      - name: Check Windows CMD installer entrypoint
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: install.cmd --help

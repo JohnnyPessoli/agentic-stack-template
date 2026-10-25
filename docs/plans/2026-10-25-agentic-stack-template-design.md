@@ -6,9 +6,9 @@ Date: 2026-10-25
 
 Create a public, portable repository that lets a developer install a reusable
 agentic development stack into an existing project with one command. The
-repository is a standalone project under
-`C:\Users\johnn.JOHNNYPESSOLI\Documents\Projetos\agentic-stack-template`; it
-does not change the NF Simplifica application or its documentation.
+repository is a standalone project named `agentic-stack-template` in the
+user-selected projects directory; it does not change the NF Simplifica
+application or its documentation.
 
 The repository will be published publicly as
 `JohnnyPessoli/agentic-stack-template` under the MIT License. The primary
@@ -67,13 +67,22 @@ installation should be safe and should not create duplicate configuration.
 
 ### Configure a target project
 
-1. Detect supported IDE integrations already present in the project or user
-   environment. Configure detected integrations only; allow explicit tool
-   selection through `--tools`.
+1. Detect the five integrations from the existing setup scope that are present
+   in the project or user environment: `antigravity-cli`, `claude-code`,
+   `codex`, `cursor`, and `github-copilot`. Configure detected integrations
+   only; allow explicit selection through `--tools`. Add other BMAD-supported
+   integrations only in a later, intentional change.
 2. Check for `uv`. Ask before invoking its official installer; non-interactive
-   runs require `--install-uv`. Do not request administrator privileges.
-3. Run the BMAD stable installer at version `6.12.4`, with Portuguese as the
-   default communication and document language.
+   runs require `--install-uv`. If the user declines or installation fails,
+   continue the BMAD install with a clear warning that some Python-backed
+   workflows need `uv`. Do not request administrator privileges.
+3. For a fresh project, run the BMAD stable `bmm` module at version `6.12.4`,
+   with Portuguese as the default communication and document language. If
+   `_bmad/` already exists, do not update it by default; `--update-bmad`
+   explicitly invokes BMAD's update action at the pinned CLI version while
+   preserving configured tools and applying BMAD's own policy to installed
+   modules. The update option does not pass a replacement `--tools` or
+   `--modules` list.
 4. Apply the generic persona customizations and Kent TDD skill without
    overwriting existing files unless the user supplies the force option.
 5. Install Alethe by default from its upstream public repository. Support
@@ -111,11 +120,14 @@ repository. It will include:
 - Exact clone, install, PATH-consent, update and uninstall instructions.
 - A complete reference for command options, defaults, tool detection,
   overrides, dry run, conflict handling, `--force`, `--install-uv` and
-  `--skip-alethe`.
+  `--skip-alethe`, and the explicit `--update-bmad` behavior.
 - How Alethe becomes the default entry point, what its global `always` mode
-  affects, the persistent BMAD-selection rule, how to opt in or decline, how to
-  remove the rule/turn the mode off, and how to ask naturally without naming a
-  BMAD persona.
+  affects, the persistent BMAD-selection rule, how to opt in or decline, and
+  how to ask naturally without naming a BMAD persona. Explain that the pinned
+  Alethe CLI cannot remove one rule individually. `mode off` disables it only
+  in the current project; `mode off --everywhere` clears the entire global mode
+  object, including all stored rules and preferences. Warn about this effect;
+  never run that command from the installer or edit undocumented global files.
 - A plain-language explanation, in both languages, of how the tools
   complement one another: BMAD supplies the method and specialist workflows;
   Kent applies TDD using the project's existing test conventions; Alethe is
@@ -134,7 +146,9 @@ repository. It will include:
   and removal or upgrade.
 - Clear statements that external tools have their own licenses, version
   lifecycles and capabilities, and that the template does not guarantee
-  security, correctness, or a fixed number of BMAD skills.
+  security, correctness, or a fixed number of BMAD skills. Identify the
+  separate upstream trademarks and state that this repository is not endorsed
+  by or affiliated with BMAD or Alethe maintainers.
 
 ## Safety and error handling
 
@@ -184,8 +198,9 @@ repository. It will include:
    agent, while Alethe retains its choice to work directly or orchestrate.
 5. Existing project files are preserved unless the user explicitly requests
    replacement.
-6. Missing `uv` causes a consent prompt or a clear non-interactive error unless
-   `--install-uv` is passed.
+6. Missing `uv` causes a consent prompt; declining or not passing
+   `--install-uv` in a non-interactive run does not block BMAD installation,
+   but the summary clearly identifies workflows that need `uv`.
 7. Portuguese and English documentation include the complete step-by-step
    walkthrough and a realistic, synthetic worked example.
 8. Automated checks pass on Windows, macOS and Linux before the repository

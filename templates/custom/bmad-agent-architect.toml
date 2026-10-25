@@ -1,0 +1,6 @@
+[agent]
+principles = [
+  "Inspecione a estrutura, as instruções e as decisões documentadas que existirem antes de propor uma arquitetura.",
+  "Diferencie fatos observados, hipóteses e decisões ainda pendentes.",
+  "Prefira mudanças incrementais que respeitem os limites e padrões já adotados pelo projeto.",
+]

@@ -3,7 +3,7 @@
 **ID:** SPEC-20261025-001  
 **Data:** 2026-10-25  
 **Autor:** Usuário solicitante  
-**Status:** APROVADO
+**Status:** APROVADO — revisão 3
 
 ## 1. Contexto
 
@@ -45,8 +45,8 @@ segurança e previsibilidade em seus projetos.
 
 ### 2.1 Repositório e distribuição
 
-1. Criar projeto independente em
-   `C:\Users\johnn.JOHNNYPESSOLI\Documents\Projetos\agentic-stack-template`.
+1. Criar projeto independente `agentic-stack-template` no diretório de
+   projetos escolhido pelo usuário.
 2. Criar repositório público `JohnnyPessoli/agentic-stack-template` com
    licença MIT própria.
 3. Fornecer README em português brasileiro e documentação equivalente em
@@ -97,6 +97,7 @@ Opções obrigatórias:
 | `--dry-run` | Mostra operações previstas; não grava, não instala ferramentas e não muda configurações globais |
 | `--force` | Permite substituir somente arquivos de template identificados como conflito |
 | `--install-uv` | Autoriza instalar `uv` no ambiente do usuário em modo não interativo |
+| `--update-bmad` | Em projeto com `_bmad/`, autoriza executar o update oficial BMAD 6.12.4; sem ele, preservar BMAD existente |
 | `--skip-alethe` | Não instala Alethe nem altera seu estado global |
 | `--enable-alethe-everywhere` | Em modo não interativo, autoriza ativar Alethe globalmente e adicionar a regra BMAD |
 | `--help` | Exibe uso, requisitos e opções sem modificar o ambiente |
@@ -109,8 +110,11 @@ instalação de `uv` ou ativação global de Alethe.
 
 - Git para clonar o repositório e fixar a revisão de Alethe.
 - Node.js 20.12+ e npm/npx para BMAD.
-- Python 3.10+ e `uv` para BMAD; `uv` ausente exige confirmação antes da
-  instalação oficial ou `--install-uv` explícito.
+- Python 3.10+ para o instalador BMAD. `uv` é necessário por algumas skills e
+  scripts: pedir consentimento para instalar quando ausente; se a pessoa
+  recusar, instalar BMAD e informar que esses recursos não funcionarão até
+  instalar `uv`. Em modo não interativo, só tentar instalar com
+  `--install-uv`; sem essa opção, continuar com aviso.
 - Pelo menos uma ferramenta compatível com a instalação BMAD.
 - Acesso de rede ao npm e aos repositórios upstream no momento da instalação.
 
@@ -120,9 +124,13 @@ corrigir; não prosseguir como se a etapa tivesse sucesso.
 
 ### 2.5 BMAD e ferramentas
 
-1. Usar a versão estável `bmad-method@6.12.4`, não a linha v7 alpha.
+1. Usar a versão estável `bmad-method@6.12.4` com o módulo oficial `bmm`, não
+   a linha v7 alpha.
 2. O idioma padrão de comunicação e documentação gerada pelo BMAD é português.
-3. Detectar ferramentas compatíveis e configurar somente as detectadas.
+3. A lista inicial de ferramentas suportadas pelo template é exatamente a do
+   comando original: `antigravity-cli`, `claude-code`, `codex`, `cursor` e
+   `github-copilot`. Embora o BMAD aceite outras integrações, não adicioná-las
+   implicitamente ao template.
 4. Permitir seleção explícita por `--tools`, validada por allowlist.
 5. Se nenhuma ferramenta for detectada ou selecionada, falhar antes da
    instalação BMAD, explicando as opções suportadas.
@@ -131,6 +139,13 @@ corrigir; não prosseguir como se a etapa tivesse sucesso.
    versão instalada.
 7. Antes de implementar o comando, validar no pacote fixado os nomes de flags,
    IDs de ferramentas, instalação não interativa e suporte aos dois idiomas.
+8. Se `_bmad/` já existir, não chamar o instalador BMAD por padrão. Reportar
+   versão/módulos detectados e preservar a instalação. Com `--update-bmad`,
+   usar `--action update --yes` na versão `6.12.4`, sem passar `--tools` nem
+   `--modules` para não substituir as seleções existentes; seguir os padrões
+   de atualização de módulos do BMAD e reportar o que o instalador disser.
+   `--force` não implica update BMAD. Se não existir `_bmad/`, fazer instalação
+   inicial normal, mesmo que `--update-bmad` tenha sido passado.
 
 ### 2.6 Templates e Kent TDD
 
@@ -179,8 +194,12 @@ corrigir; não prosseguir como se a etapa tivesse sucesso.
    uma persona BMAD em todas as tarefas.
 9. Não alterar configurações globais do usuário fora do consentimento descrito
    e da interface oficial do Alethe.
-10. Documentar como desligar o modo global e remover apenas a regra adicionada,
-    sem apagar regras preexistentes.
+10. Documentar que `mode off` desativa Alethe somente no projeto atual e mantém
+    o modo global nos demais. `mode off --everywhere` remove o objeto inteiro
+    do modo global, incluindo todas as regras e preferências nele armazenadas.
+    Alertar explicitamente sobre esse efeito e nunca executar esse comando pelo
+    instalador. A revisão pinada não permite remover uma regra individual.
+    Não usar `--clear-rules` nem editar arquivos globais não documentados.
 
 ### 2.8 Saída e erros
 
@@ -190,8 +209,10 @@ corrigir; não prosseguir como se a etapa tivesse sucesso.
 | Argumento inválido, ferramenta desconhecida ou opções incompatíveis | Não executar alterações; exit code não zero e mostrar uso |
 | Destino inválido ou inacessível | Não instalar; explicar o caminho e a correção |
 | Conflito sem `--force` | Preservar arquivos e informar cada conflito |
-| `uv` ausente sem consentimento em modo interativo | Pausar para decisão |
-| `uv` ausente sem `--install-uv` em modo não interativo | Não prosseguir com BMAD; informar instalação |
+| `uv` ausente e usuário recusa instalação | Continuar BMAD com aviso explícito sobre workflows/scripts que dependem de `uv` |
+| `uv` ausente sem `--install-uv` em modo não interativo | Continuar BMAD com aviso explícito; não alterar o ambiente |
+| BMAD existente sem `--update-bmad` | Preservar `_bmad/`; reportar versão/módulos e não executar o instalador BMAD |
+| BMAD existente com `--update-bmad` | Executar update oficial pinado, preservando lista de tools e usando política upstream de módulos |
 | Falha em BMAD, Alethe ou alteração autorizada de modo global | Reportar etapa específica e código não zero; não afirmar sucesso completo |
 | Alethe instalado, mas consentimento global recusado | Considerar configuração local concluída e reportar “Alethe global não ativado” |
 | `--dry-run` | Exit code `0` se opções/destino forem válidos; listar ações e não produzir efeitos |
@@ -205,7 +226,7 @@ capturar ou persistir credenciais.
 | Item | Resposta |
 | --- | --- |
 | 1. Dados e finalidade | Entradas: argumentos, caminhos, comandos encontrados no PATH e evidências mínimas de instalação das IDEs para detecção. Finalidade: selecionar integração e arquivos de destino. Saídas: arquivos de configuração e estado de modo Alethe se autorizado. Não coletar dados fiscais, empresariais, pessoais de destinatários nem conteúdo de `.env`. Não há linhas do inventário NF Simplifica afetadas: este é um repositório independente de tooling. |
-| 2. Atores e autorização por recurso | A pessoa local autoriza execução e alterações. Não há autenticação de rede nem serviço remoto próprio. Usar as permissões do usuário atual; nunca elevar privilégios. `--force`, `--install-uv`, edição de PATH e modo global Alethe precisam da autorização definida nesta spec. |
+| 2. Atores e autorização por recurso | A pessoa local autoriza execução e alterações. Não há autenticação de rede nem serviço remoto próprio. Usar as permissões do usuário atual; nunca elevar privilégios. `--force`, `--update-bmad`, `--install-uv`, edição de PATH e modo global Alethe precisam da autorização definida nesta spec. |
 | 3. Fronteiras e fluxo | Terminal do usuário → scripts locais → npm/GitHub upstream → arquivos do projeto e, se consentido, configuração global Alethe. BMAD/Alethe executam seu próprio código e podem chamar CLIs de IA depois de instalados; isso é comportamento externo. Sem navegador/BFF/API/banco/fornecedor fiscal no NF Simplifica. |
 | 4. Sigilo do fornecedor | Não aplicável — a ferramenta não trata NF Simplifica, fornecedor fiscal, XML/PDF fiscal, integrações ou contratos de fornecedores. Não importar os documentos/políticas de fornecedor do projeto de origem. |
 | 5. Segredos e material criptográfico | Nenhum segredo é necessário ou criado pelo template. Não ler `.env`, credenciais npm, tokens Git, configuração de sessão de IDE, chaves ou certificados. Processos upstream podem usar credenciais já configuradas pelo usuário; não inspecioná-las, registrá-las ou copiá-las. |
@@ -225,7 +246,7 @@ Simplifica: nenhuma linha afetada.
 
 ```text
 setup-agentic-stack [--target <diretório>] [--tools <lista>] [--dry-run]
-                    [--force] [--install-uv] [--skip-alethe]
+                    [--force] [--install-uv] [--update-bmad] [--skip-alethe]
                     [--enable-alethe-everywhere] [--help]
 ```
 
@@ -268,8 +289,8 @@ Clone GitHub → instalador por OS → comando global em ~/.local/bin
 | --- | --- | --- | --- |
 | Node.js/npm | Node 20.12+ | Executar o instalador BMAD | Interromper BMAD e indicar instalação oficial |
 | Python | Python 3.10+ | Scripts do BMAD e configuração do Alethe | Não instalar automaticamente; indicar requisito |
-| `uv` | versão oficial disponível no momento, validada antes de uso | Setup/scripts BMAD | Pedir consentimento ou exigir `--install-uv` |
-| `bmad-method` | 6.12.4 | Método e agentes/workflows BMAD | Reportar erro sem resumo de sucesso |
+| `uv` | versão oficial disponível no momento, validada antes de uso | Algumas skills/scripts BMAD | Pedir consentimento; se recusado, concluir BMAD com aviso |
+| `bmad-method` | 6.12.4, módulo `bmm` | Método e agentes/workflows BMAD | Reportar erro sem resumo de sucesso; update existente só com `--update-bmad` |
 | `Kc1t/alethe-orchestrate-skill` | commit fixo acima | Skill/orquestrador e ativação de modo | Não alternar para `main`; reportar falha |
 | Ferramentas de IDE | IDs allowlisted reconhecidos pelo BMAD 6.12.4 | Instalação das skills/integrações | Detecção documentada ou override explícito |
 | Git | versão presente no sistema | Clone da instalação e revisão Alethe | Instruir instalação oficial |
@@ -286,8 +307,8 @@ Clone GitHub → instalador por OS → comando global em ~/.local/bin
 | T-04 | `--dry-run` com etapas configuráveis | Nenhum arquivo, download, PATH ou modo global alterado | Comparação do estado antes/depois |
 | T-05 | Sem IDE detectada e sem override | Falhar antes de invocar BMAD | Mock de subprocesso |
 | T-06 | `--tools` com ID inválido ou metacaractere | Rejeitar antes da execução externa | Teste de entrada |
-| T-07 | `uv` ausente sem consentimento | Interromper BMAD e informar o passo necessário | Fixture/mock |
-| T-08 | `uv` ausente com `--install-uv` | Executar instalador oficial com o consentimento declarado | Mock; smoke apenas se consentido |
+| T-07 | `uv` ausente e instalação recusada | BMAD ainda instala; relatório informa limitações de workflows Python | Fixture/mock |
+| T-08 | `uv` ausente com `--install-uv` | Executar instalador oficial com consentimento; se falhar, continuar BMAD e reportar a limitação e o resultado parcial | Mock; smoke apenas se consentido |
 | T-09 | Alethe instalado, modo global recusado | Nenhuma alteração global; relatório explicita estado | Fixture/mock |
 | T-10 | Alethe global autorizado | Uma regra BMAD adicionada, regras existentes intactas; modo global ligado | Teste isolado de configuração |
 | T-11 | Regra já existe ou limite upstream atingido | Não duplicar, limpar ou substituir; reportar ativação incompleta | Fixture/mock |
@@ -295,10 +316,12 @@ Clone GitHub → instalador por OS → comando global em ~/.local/bin
 | T-13 | Caminho contém espaços, Unicode ou shell metacharacters | Resolver e encaminhar literalmente sem executar conteúdo do caminho | Testes em cada OS |
 | T-14 | Marcador sintético de segredo em ambiente não usado pelo tool | Marcador não aparece na saída nem em artefatos gerados | Teste local |
 | T-15 | Comando global via PowerShell, CMD, Git Bash, macOS e Linux | Encaminha argumentos e retorna status correto | GitHub Actions por OS |
+| T-16 | Projeto com `_bmad/`, sem e com `--update-bmad` | Sem flag, preservar; com flag, executar `--action update --yes` sem trocar lista de tools/modules | Mock de processo + fixture |
+| T-17 | Desativar Alethe após opt-in global | Documentar `mode off` apenas no projeto; avisar que `mode off --everywhere` limpa todas as regras/preferências globais e nunca executar esse comando pelo instalador | Revisão de documentação + mock |
 
 ### 6.2 Critérios de aceite mensuráveis
 
-- Todos os casos T-01..T-15 aplicáveis passam.
+- Todos os casos T-01..T-17 aplicáveis passam.
 - GitHub Actions valida Windows, macOS e Linux; nenhum sistema é anunciado como
   suportado se o job correspondente falhar.
 - Instalação e smoke test são executados apenas em diretórios temporários
@@ -364,19 +387,25 @@ antes de afirmar integração automática ampla.
 
 ## 8. Itens pendentes de validação técnica
 
-1. `bmad-method@6.12.4`: confirmar flags reais para IDEs, idioma de comunicação
-   e idioma dos documentos; caso algum flag não exista, atualizar spec e pedir
-   decisão antes de substituir por outro método.
+1. Confirmado no `install.js` oficial do branch `V6.12`: BMAD aceita
+   `--modules`, `--tools`, `--yes`, `--directory`,
+   `--communication-language`, `--document-output-language`, `--action` e
+   `--list-tools`.
+   Confirmados os cinco IDs acima no `platform-codes.yaml`. Antes de
+   implementar, validar instalação headless e opções contra o pacote npm
+   pinado `6.12.4`; se diferirem, atualizar a spec e pedir decisão.
 2. Instalação de skill Alethe na revisão pinada: confirmar sintaxe suportada e
    cópia apenas de `skills/alethe` para os diretórios das ferramentas.
-3. Alethe: confirmar interface oficial para `mode on --everywhere --rule`,
-   comportamento idempotente, leitura de regras existentes e caminho de
-   política global. Não limpar regras.
-4. Detecção e caminhos de instalação de cada integração BMAD v6.12.4 nos três
-   sistemas operacionais.
+3. Confirmado no `SKILL.md` e script Python oficial da revisão pinada do
+   Alethe: `mode on --everywhere` e `--rule` mantêm ativação global e regra
+   persistente; regras duplicadas são ignoradas e o máximo é oito. Validar
+   execução na cópia pinada, leitura de estado e mensagem quando o limite for
+   atingido; nunca usar `--clear-rules`.
+4. Validar detecção e caminhos de instalação dos cinco IDs BMAD v6.12.4 nos
+   três sistemas operacionais.
 
 ## Aprovação
 
 | Revisor | Status | Data | Comentários |
 | --- | --- | --- | --- |
-| Usuário solicitante | ✅ Aprovado | 2026-10-25 | Solicitou documentação robusta e didática, incluindo como Alethe e BMAD se complementam. |
+| Usuário solicitante | ✅ Aprovado | 2026-10-25 | Aprovou a revisão 2 e autorizou implementação; confirmou manter opt-in global e a regra BMAD, com aviso de que `mode off --everywhere` limpa todas as regras/preferências globais (revisão 3). |

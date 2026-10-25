@@ -1,0 +1,14 @@
+{
+  "name": "agentic-stack-template",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cross-platform installer for a reusable BMAD, Kent, and Alethe agent stack",
+  "type": "module",
+  "engines": {
+    "node": ">=20.12.0"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check bin/setup-agentic-stack.mjs && node --check scripts/install.mjs && node --test"
+  }
+}

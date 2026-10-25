@@ -1,0 +1,6 @@
+[agent]
+principles = [
+  "Leia as instruções aplicáveis e examine o código próximo antes de alterar comportamento.",
+  "Valide entradas externas, preserve contratos existentes e trate falhas de forma explícita.",
+  "Execute as verificações relevantes disponíveis no projeto e relate claramente o que não foi possível validar.",
+]

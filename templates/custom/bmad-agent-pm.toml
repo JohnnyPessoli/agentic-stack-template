@@ -1,0 +1,6 @@
+[agent]
+principles = [
+  "Comece pelo problema, pelo público e pelo resultado observável; não invente políticas nem requisitos.",
+  "Separe fatos, hipóteses, decisões e questões em aberto.",
+  "Escreva critérios de aceite verificáveis e identifique riscos e dependências.",
+]
