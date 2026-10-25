@@ -40,11 +40,12 @@ guide.
 
 BMAD and Alethe remain external projects. The template will install the stable
 `bmad-method` version `6.12.4` and the Alethe skill from
-`Kc1t/alethe-orchestrate-skill`. Their respective upstream licenses and
-attribution will be documented separately from this repository's license.
-The Alethe source repository declares MIT. The exact BMAD command flags and
-the Alethe installer behavior must be verified against the pinned versions
-before the setup command is finalized.
+`Kc1t/alethe-orchestrate-skill`, pinned initially to commit
+`3268b6d115cb27d58ebf3409de6c49d55f919477`. Their respective upstream
+licenses and attribution will be documented separately from this repository's
+license. Both upstream repositories declare MIT. The exact BMAD command flags
+and the Alethe installer behavior must be verified against the pinned
+revisions before the setup command is finalized.
 
 ## User flows
 
@@ -76,7 +77,8 @@ installation should be safe and should not create duplicate configuration.
 4. Apply the generic persona customizations and Kent TDD skill without
    overwriting existing files unless the user supplies the force option.
 5. Install Alethe by default from its upstream public repository. Support
-   `--skip-alethe` for users who do not want it.
+   `--skip-alethe` for users who do not want it. Pin the initial Alethe source
+   to the reviewed commit; updates require an intentional template change.
 6. Offer Alethe's upstream `always` mode as a separate, explicit opt-in. Its
    documented scope is global across the user's projects, so explain that
    impact before activation. If declined, print the supported one-time
@@ -160,9 +162,9 @@ repository. It will include:
 3. BMAD uses the pinned stable version and Portuguese defaults; detected tools
    are configured, with a documented manual override.
 4. Alethe is installed from upstream by default and can be skipped; its source
-   files are not vendored in this repository. Global `always` activation is
-   separately opt-in, and Alethe guidance makes BMAD selection available
-   without requiring users to name agents.
+   files are not vendored in this repository, and the source revision is
+   pinned. Global `always` activation is separately opt-in, and Alethe guidance
+   makes BMAD selection available without requiring users to name agents.
 5. Existing project files are preserved unless the user explicitly requests
    replacement.
 6. Missing `uv` causes a consent prompt or a clear non-interactive error unless
