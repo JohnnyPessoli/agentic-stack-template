@@ -81,14 +81,20 @@ installation should be safe and should not create duplicate configuration.
    to the reviewed commit; updates require an intentional template change.
 6. Offer Alethe's upstream `always` mode as a separate, explicit opt-in. Its
    documented scope is global across the user's projects, so explain that
-   impact before activation. If declined, print the supported one-time
-   activation instructions. Never edit undocumented global Alethe settings.
+   impact before activation. On consent, use the supported upstream
+   `mode on --everywhere` mechanism and add one conditional standing rule:
+   when BMAD exists in a project, use relevant BMAD workflows/personas without
+   requiring the user to name them. Preserve existing Alethe rules. If declined,
+   print the supported one-time activation instructions. Never edit
+   undocumented global Alethe settings.
 7. Provide generic Alethe guidance that makes it the default entry point:
    users may describe tasks in natural language without naming a BMAD persona.
    Alethe should select relevant BMAD workflows/personas when useful, while
-   retaining its own choice to handle small tasks directly. Do not promise that
-   Alethe invokes a BMAD persona on every request; validate the integration
-   behavior against upstream capabilities.
+   retaining its upstream behavior: it may handle small or tightly coupled
+   tasks directly and proactively orchestrates work that splits into bounded
+   independent units. Do not promise that Alethe invokes a BMAD persona on
+   every request; validate the integration behavior against upstream
+   capabilities.
 8. Report completed steps, skipped steps, and failures separately. A failed
    external installation must not be reported as a successful setup.
 
@@ -107,7 +113,8 @@ repository. It will include:
   overrides, dry run, conflict handling, `--force`, `--install-uv` and
   `--skip-alethe`.
 - How Alethe becomes the default entry point, what its global `always` mode
-  affects, how to opt in or decline, and how to ask naturally without naming a
+  affects, the persistent BMAD-selection rule, how to opt in or decline, how to
+  remove the rule/turn the mode off, and how to ask naturally without naming a
   BMAD persona.
 - A worked use case: prepare an existing application repository, use the
   architecture/product/development personas to refine a change, use Kent to
@@ -131,7 +138,9 @@ repository. It will include:
 - Identify external sources and pinned versions before invoking their
   installers.
 - Do not silently activate Alethe's global `always` mode. Explain that it
-  applies across projects and require explicit user consent.
+  applies across projects and require explicit user consent. Add the standing
+  rule only through the documented upstream interface; do not clear or replace
+  existing user rules.
 - Preserve conflicts by default; provide `--dry-run` and an explicit
   replacement option.
 - Propagate non-zero status for failed required steps and show remediation
@@ -163,8 +172,9 @@ repository. It will include:
    are configured, with a documented manual override.
 4. Alethe is installed from upstream by default and can be skipped; its source
    files are not vendored in this repository, and the source revision is
-   pinned. Global `always` activation is separately opt-in, and Alethe guidance
-   makes BMAD selection available without requiring users to name agents.
+   pinned. Global `always` activation and its additive BMAD-selection rule are
+   separately consented; users can ask in natural language without naming an
+   agent, while Alethe retains its choice to work directly or orchestrate.
 5. Existing project files are preserved unless the user explicitly requests
    replacement.
 6. Missing `uv` causes a consent prompt or a clear non-interactive error unless
@@ -183,7 +193,7 @@ repository. It will include:
 - The exact non-interactive install syntax and target paths supported by the
   upstream skills installer for the Alethe skill.
 - The documented Alethe `always` activation mechanism and how its persistent
-  goal/rule can direct it to relevant BMAD workflows without editing
-  unsupported global configuration.
+  `--rule` can direct it to relevant BMAD workflows without replacing existing
+  rules or editing unsupported global configuration.
 - Cross-platform detection signals for each BMAD-supported tool, especially
   integrations without a command-line executable.
