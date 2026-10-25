@@ -77,7 +77,17 @@ installation should be safe and should not create duplicate configuration.
    overwriting existing files unless the user supplies the force option.
 5. Install Alethe by default from its upstream public repository. Support
    `--skip-alethe` for users who do not want it.
-6. Report completed steps, skipped steps, and failures separately. A failed
+6. Offer Alethe's upstream `always` mode as a separate, explicit opt-in. Its
+   documented scope is global across the user's projects, so explain that
+   impact before activation. If declined, print the supported one-time
+   activation instructions. Never edit undocumented global Alethe settings.
+7. Provide generic Alethe guidance that makes it the default entry point:
+   users may describe tasks in natural language without naming a BMAD persona.
+   Alethe should select relevant BMAD workflows/personas when useful, while
+   retaining its own choice to handle small tasks directly. Do not promise that
+   Alethe invokes a BMAD persona on every request; validate the integration
+   behavior against upstream capabilities.
+8. Report completed steps, skipped steps, and failures separately. A failed
    external installation must not be reported as a successful setup.
 
 The setup command will support a dry run that lists intended filesystem
@@ -94,12 +104,15 @@ repository. It will include:
 - A complete reference for command options, defaults, tool detection,
   overrides, dry run, conflict handling, `--force`, `--install-uv` and
   `--skip-alethe`.
+- How Alethe becomes the default entry point, what its global `always` mode
+  affects, how to opt in or decline, and how to ask naturally without naming a
+  BMAD persona.
 - A worked use case: prepare an existing application repository, use the
   architecture/product/development personas to refine a change, use Kent to
   discover and follow the project's existing test conventions, and optionally
-  ask Alethe to orchestrate suitable independent work. The example must use
-  synthetic project details and must distinguish upstream tool behavior from
-  this template's behavior.
+  let always-on Alethe select the relevant BMAD workflow and orchestrate
+  suitable independent work. The example must use synthetic project details
+  and must distinguish upstream tool behavior from this template's behavior.
 - Troubleshooting for missing prerequisites, unsupported IDE detection,
   PATH configuration, network/package installation failures, existing files,
   and removal or upgrade.
@@ -115,6 +128,8 @@ repository. It will include:
   project `.env` files, or local personal customization files.
 - Identify external sources and pinned versions before invoking their
   installers.
+- Do not silently activate Alethe's global `always` mode. Explain that it
+  applies across projects and require explicit user consent.
 - Preserve conflicts by default; provide `--dry-run` and an explicit
   replacement option.
 - Propagate non-zero status for failed required steps and show remediation
@@ -145,7 +160,9 @@ repository. It will include:
 3. BMAD uses the pinned stable version and Portuguese defaults; detected tools
    are configured, with a documented manual override.
 4. Alethe is installed from upstream by default and can be skipped; its source
-   files are not vendored in this repository.
+   files are not vendored in this repository. Global `always` activation is
+   separately opt-in, and Alethe guidance makes BMAD selection available
+   without requiring users to name agents.
 5. Existing project files are preserved unless the user explicitly requests
    replacement.
 6. Missing `uv` causes a consent prompt or a clear non-interactive error unless
@@ -163,5 +180,8 @@ repository. It will include:
   `bmad-method@6.12.4`.
 - The exact non-interactive install syntax and target paths supported by the
   upstream skills installer for the Alethe skill.
+- The documented Alethe `always` activation mechanism and how its persistent
+  goal/rule can direct it to relevant BMAD workflows without editing
+  unsupported global configuration.
 - Cross-platform detection signals for each BMAD-supported tool, especially
   integrations without a command-line executable.
