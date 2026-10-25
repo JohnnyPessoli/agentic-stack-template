@@ -6,6 +6,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -70,7 +71,7 @@ test("rejects a filesystem root but resolves normal paths containing spaces", (t
   const directory = temporaryDirectory(t);
   const project = path.join(directory, "repo with spaces & punctuation");
   mkdirSync(project);
-  assert.equal(resolveTarget(project), project);
+  assert.equal(resolveTarget(project), realpathSync(project));
   assert.throws(() => resolveTarget(path.parse(directory).root), /raiz/);
 });
 
