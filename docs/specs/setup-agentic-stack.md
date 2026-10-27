@@ -3,7 +3,7 @@
 **ID:** SPEC-20261025-001  
 **Data:** 2026-10-25  
 **Autor:** Usuário solicitante  
-**Status:** APROVADO — revisão 3
+**Status:** APROVADO — revisão 5
 
 ## 1. Contexto
 
@@ -404,8 +404,61 @@ antes de afirmar integração automática ampla.
 4. Validar detecção e caminhos de instalação dos cinco IDs BMAD v6.12.4 nos
    três sistemas operacionais.
 
+## 9. Ajustes de robustez (revisão 4)
+
+Aprovada pelo usuário em 2026-10-27.
+
+Correções para instalar em projetos novos e em andamento, sem alterar o
+contrato de opções:
+
+1. Links simbólicos/junctions são aceitos somente quando o destino real é um
+   diretório dentro do projeto-alvo (ex.: `.claude/skills` → `.agents/skills`);
+   links para fora continuam recusados.
+2. O lock do projeto guarda o PID; um lock cujo processo não existe mais é
+   reaproveitado. Lock de processo ativo continua bloqueando.
+3. `uv` também é procurado nos destinos padrão do instalador oficial
+   (`UV_INSTALL_DIR`, `XDG_BIN_HOME`, `~/.local/bin`, `~/.cargo/bin`), com
+   aviso quando estiver fora do PATH.
+4. O instalador global planeja todas as cópias antes de gravar; com conflito ou
+   caminho inseguro, nenhum arquivo é alterado.
+5. Avisos não bloqueantes: destino em subdiretório de repositório Git e
+   ferramentas selecionadas ausentes do manifesto BMAD existente (sem passar
+   `--tools` ao update, conforme 2.5.8).
+6. `--dry-run` informa pré-requisitos detectados (Node.js, npm, Python, `uv`,
+   Git) sem instalar nada; Git ausente gera erro específico na etapa Alethe.
+7. O comando manual de ativação Alethe usa o interpretador Python detectado.
+
+## 10. Reinstalação sobre versões anteriores (revisão 5)
+
+Aprovada pelo usuário em 2026-10-27, seguindo as três recomendações propostas.
+Complementa §4.2: além dos arquivos listados ali, o comando grava um registro
+de instalação no projeto.
+
+1. **Registro:** `_bmad/_config/agentic-stack.json` (versionável com o
+   projeto) contém `format`, `templateVersion`, `aletheCommit` e o SHA-256 de
+   cada arquivo copiado pelo template, com chave relativa ao projeto. Não
+   armazena conteúdo. Só é gravado se `_bmad/_config` existir; o update BMAD
+   6.12.4 não remove esse diretório.
+2. **Decisão por arquivo:** igual à versão nova → nada; igual ao hash
+   registrado → atualizar sem `--force`; diferente de ambos → preservar e gravar
+   a versão nova em `<arquivo>.new`; presente no registro, mas ausente do
+   template novo → manter e listar para remoção manual.
+3. **Atomicidade:** Kent e Alethe são atualizados por inteiro por destino; com
+   qualquer arquivo editado ou caminho inseguro, nenhum arquivo do componente é
+   alterado (exceto os `.new`). Overrides de `_bmad/custom` são independentes e
+   atualizados individualmente.
+4. **Sem registro (instalações 1.0.0, scripts manuais, registro inválido ou
+   perdido):** arquivos divergentes são tratados como editados.
+5. Um `.new` gerado pelo template é removido apenas quando fica idêntico ao
+   arquivo já resolvido. `--force` mantém o comportamento de substituir os
+   arquivos de template conflitantes.
+6. `--dry-run` mostra o estado do registro e o plano para `_bmad/custom` e Kent;
+   o resumo informa a versão anterior, o registro gravado e arquivos obsoletos.
+
 ## Aprovação
 
 | Revisor | Status | Data | Comentários |
 | --- | --- | --- | --- |
 | Usuário solicitante | ✅ Aprovado | 2026-10-25 | Aprovou a revisão 2 e autorizou implementação; confirmou manter opt-in global e a regra BMAD, com aviso de que `mode off --everywhere` limpa todas as regras/preferências globais (revisão 3). |
+| Usuário solicitante | ✅ Aprovado | 2026-10-27 | Aprovou a revisão 4 (§9): ajustes de robustez para projetos novos e em andamento. |
+| Usuário solicitante | ✅ Aprovado | 2026-10-27 | Aprovou a revisão 5 (§10): registro em `_bmad/_config/agentic-stack.json`, `.new` para arquivos editados e instalações sem registro tratadas como editadas. |

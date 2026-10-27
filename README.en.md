@@ -103,12 +103,19 @@ not deleted.
 
 ## 2. Set up a project
 
-Change to the project directory and run a dry-run first:
+It works for both new projects (an empty folder, with or without Git) and
+projects already in progress. Change to the project root, the same folder you
+open in your IDE, and run a dry-run first:
 
 ```sh
 cd path/to/your/project
 setup-agentic-stack --dry-run
 ```
+
+The dry-run shows the detected prerequisites (Node.js, npm, Python, `uv`, Git),
+the planned actions, and project warnings. For example, it warns when the
+folder is a subdirectory of a Git repository or when the existing BMAD install
+has no integration for a selected tool.
 
 Then run setup:
 
@@ -154,6 +161,12 @@ overrides detection; it does not install an IDE.
    This uses BMAD 6.12.4's official `update --yes` action without supplying a
    replacement module or tool list. BMAD applies its upstream policy to
    installed modules; review its output. `--force` does not update BMAD.
+
+   If you select a tool that the existing BMAD manifest does not list, Kent
+   and Alethe are copied for it, but BMAD skills are not. The command warns
+   and points to the official interactive installer
+   (`npx bmad-method@6.12.4 install`) to add the integration, because
+   `--update-bmad` keeps the tool list unchanged.
 3. **Customizations:** copies generic Winston, Amelia, and John overrides to
    `_bmad/custom/`, plus the Kent skill to the selected tool's skill directory.
    Conflicts are preserved by default. `--force` replaces only conflicting
@@ -187,9 +200,12 @@ authorization for those actions.
 
 The target must exist, be a directory, and must not be a filesystem/volume
 root. The command does not read `.env`, credentials, or personal customization
-files. Template writes preserve conflicts; symbolic or incompatible paths are
-rejected for safety. Concurrent setup runs against the same project are
-serialized with a temporary lock.
+files. Template writes preserve conflicts. Symbolic links and junctions are
+accepted only when they point to a directory inside the project itself, such
+as `.claude/skills` → `.agents/skills`; links leaving the project and
+incompatible paths are rejected for safety. Concurrent setup runs against the
+same project are serialized with a temporary lock. A lock left by an
+interrupted run is reclaimed automatically once its owning process is gone.
 
 ## Alethe as the default entry point
 
@@ -257,9 +273,51 @@ In the template clone:
 git pull
 ```
 
-Run `install.ps1`, `install.cmd`, or `install.sh` again. Review conflicts and
-use `--force` only when you want to replace template-managed files. The
-installer does not delete unknown files.
+Run `install.ps1`, `install.cmd`, or `install.sh` again. The installer plans
+every copy before writing: if there is any conflict, no file is changed, so an
+install never mixes files from different versions. Review conflicts and use
+`--force` only when you want to replace template-managed files. The installer
+does not delete unknown files.
+
+If `~/.local/bin` already holds `setup-agentic-stack*` wrappers from another
+source, such as earlier personal scripts, they show up as conflicts. Back them
+up before using `--force`.
+
+### Update an already configured project
+
+After updating the global command, run it again from the project root:
+
+```sh
+setup-agentic-stack --dry-run   # shows what will be updated
+setup-agentic-stack
+```
+
+Each run writes the template version and the hash of every copied file (Kent,
+`_bmad/custom`, and Alethe) to `_bmad/_config/agentic-stack.json`, with no file
+contents. Commit that file with the project. On the next run, each file is
+handled like this:
+
+| File state in the project | What happens |
+| --- | --- |
+| Same as the new version | Nothing to do |
+| Same as what was installed (not edited) | Updated automatically, no `--force` needed |
+| Different from both (edited) | Preserved; the new version is written next to it as `<file>.new` |
+| Removed in the new version | Kept and listed in the summary for manual removal |
+
+Kent and Alethe are updated as a whole or not at all: if any file of one of
+them was edited, no file in that component changes, so a skill never ends up
+half in each version. `_bmad/custom` overrides are independent and are updated
+one by one.
+
+To resolve a conflict, compare the file with its `.new`, merge what you want,
+and run the command again; the `.new` is removed automatically once the file
+matches the new version. To discard your edits and accept everything, use
+`--force`.
+
+Projects configured before the registry existed (version 1.0.0 or manual
+scripts) have no history: differing files are treated as edited and preserved,
+with a `.new` next to them. After you review them once, the registry exists and
+later updates are automatic.
 
 ### Remove the global command
 
@@ -277,7 +335,7 @@ and preferences, not just the BMAD rule.
 
 There is no automatic project uninstall because BMAD, Alethe, or their
 customizations may have been edited after setup. Review and remove only managed
-files you recognize. The script does not delete `_bmad/`, skill directories,
+files you recognize, including `_bmad/_config/agentic-stack.json`. The script does not delete `_bmad/`, skill directories,
 customizations, or project data.
 
 ## Troubleshooting
@@ -289,15 +347,23 @@ customizations, or project data.
 - **`uv` missing:** accept the prompt or pass `--install-uv` in a
   non-interactive run. If it is not installed, BMAD may still install, but
   Python-backed BMAD skills/scripts that need `uv` will not work.
+- **`uv` installed but not on PATH:** the command also checks the official
+  installer's default locations (`~/.local/bin`, `~/.cargo/bin`) and asks you
+  to reopen the terminal.
+- **Git missing:** Alethe cannot be downloaded; install Git or pass
+  `--skip-alethe`.
 - **No tool detected:** pass `--tools` with accepted IDs.
 - **Alethe already exists:** differing files are preserved. Review them and
   retry with `--force` only if you want to replace skill files.
 - **BMAD did not update:** `_bmad/` is not updated without `--update-bmad`.
 - **Conflict or symbolic path:** the command reports the path and will not
-  follow symlinks out of the project.
-- **Existing lock:** another setup may be running or a previous one exited
-  unexpectedly. Confirm no setup is active before removing the temporary lock
-  file named in the error.
+  follow symlinks out of the project. Junctions between the project's own
+  skill folders are accepted.
+- **Existing lock:** another setup is running. Locks from interrupted runs are
+  released automatically; if the error persists, confirm no setup is active
+  before removing the file named in the error.
+- **Repository subdirectory:** the warning means IDEs may not read skills from
+  that folder; run from the workspace root or pass `--target`.
 - **Alethe already has eight rules:** upstream limits the count to eight. This
   template does not clear or replace rules; resolve the limit through Alethe's
   documented interface before retrying.

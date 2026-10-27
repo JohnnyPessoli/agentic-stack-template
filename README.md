@@ -103,12 +103,19 @@ são apagados.
 
 ## 2. Preparar um projeto
 
-Entre na pasta do projeto. Faça primeiro um dry-run:
+Funciona tanto em projeto novo (pasta vazia, com ou sem Git) quanto em projeto
+em andamento. Entre na raiz do projeto, a mesma pasta que você abre na IDE, e
+faça primeiro um dry-run:
 
 ```sh
 cd caminho/do/seu/projeto
 setup-agentic-stack --dry-run
 ```
+
+O dry-run mostra os pré-requisitos detectados (Node.js, npm, Python, `uv`,
+Git), o que será feito e avisos sobre o projeto. Por exemplo, ele avisa quando
+a pasta é um subdiretório de um repositório Git ou quando o BMAD existente não
+tem integração para alguma ferramenta selecionada.
 
 Depois, execute a instalação:
 
@@ -154,6 +161,12 @@ seleção desejada. Essa opção substitui a detecção; não instala a IDE.
    lista de módulos ou ferramentas. O BMAD aplica sua política upstream aos
    módulos instalados; leia a saída antes de aceitar esse comportamento. A
    opção `--force` não atualiza BMAD.
+
+   Se você selecionar uma ferramenta que o BMAD existente não registra no
+   manifesto, Kent e Alethe são copiados para ela, mas as skills BMAD não. O
+   comando avisa e indica o instalador oficial interativo
+   (`npx bmad-method@6.12.4 install`) para adicionar a integração, porque
+   `--update-bmad` preserva a lista de ferramentas.
 3. **Customizações:** copia os overrides genéricos de Winston, Amelia e John
    para `_bmad/custom/`, além da skill Kent para o diretório reconhecido da
    ferramenta. Conflitos são preservados por padrão. `--force` substitui
@@ -187,9 +200,13 @@ autorizações explícitas para essas ações.
 
 O destino precisa existir, ser diretório e não pode ser a raiz do volume ou do
 filesystem. O comando não lê `.env`, credenciais ou arquivos pessoais de
-customização. Escritas do template preservam conflitos; caminhos simbólicos ou
-incompatíveis são recusados por segurança. Execuções concorrentes no mesmo
-projeto são serializadas por um lock temporário.
+customização. Escritas do template preservam conflitos. Links simbólicos e
+junctions são aceitos apenas quando apontam para um diretório dentro do próprio
+projeto, como `.claude/skills` → `.agents/skills`; links para fora do projeto
+ou caminhos incompatíveis são recusados por segurança. Execuções concorrentes no
+mesmo projeto são serializadas por um lock temporário. Um lock deixado por uma
+execução interrompida é reaproveitado automaticamente quando o processo que o
+criou não existe mais.
 
 ## Alethe como entrada padrão
 
@@ -256,9 +273,51 @@ No clone do template:
 git pull
 ```
 
-Execute novamente `install.ps1`, `install.cmd` ou `install.sh`. Se houver
-conflitos, revise-os; use `--force` apenas se quiser substituir os arquivos
+Execute novamente `install.ps1`, `install.cmd` ou `install.sh`. O instalador
+planeja todas as cópias antes de gravar: se houver qualquer conflito, nenhum
+arquivo é alterado, evitando uma instalação com arquivos de versões diferentes.
+Revise os conflitos e use `--force` apenas se quiser substituir os arquivos
 gerenciados pelo template. O instalador não apaga arquivos desconhecidos.
+
+Se `~/.local/bin` já tiver wrappers `setup-agentic-stack*` de outra origem,
+como scripts pessoais anteriores, eles aparecem como conflito. Guarde-os antes
+de usar `--force`.
+
+### Atualizar um projeto já configurado
+
+Depois de atualizar o comando global, rode de novo na raiz do projeto:
+
+```sh
+setup-agentic-stack --dry-run   # mostra o que será atualizado
+setup-agentic-stack
+```
+
+Cada execução grava em `_bmad/_config/agentic-stack.json` a versão do template
+e o hash de cada arquivo copiado (Kent, `_bmad/custom` e Alethe), sem conteúdo.
+Versione esse arquivo junto com o projeto. Na execução seguinte, cada arquivo é
+tratado assim:
+
+| Estado do arquivo no projeto | O que acontece |
+| --- | --- |
+| Igual à versão nova | Nada a fazer |
+| Igual ao que foi instalado (não editado) | Atualizado automaticamente, sem `--force` |
+| Diferente dos dois (editado) | Preservado; a versão nova é gravada ao lado como `<arquivo>.new` |
+| Removido na versão nova | Mantido e listado no resumo para remoção manual |
+
+Kent e Alethe são atualizados por inteiro ou não são atualizados: se um arquivo
+de um deles foi editado, nenhum arquivo daquele componente muda, evitando uma
+skill com metade em cada versão. Já os overrides de `_bmad/custom` são
+independentes e atualizados um a um.
+
+Para resolver um conflito, compare o arquivo com o `.new`, incorpore o que
+quiser e rode o comando de novo; o `.new` é removido automaticamente quando o
+arquivo fica igual à versão nova. Para descartar suas edições e aceitar tudo,
+use `--force`.
+
+Projetos configurados antes do registro (versão 1.0.0 ou scripts manuais) não
+têm histórico: arquivos divergentes são tratados como editados e preservados,
+com o `.new` ao lado. Depois de revisá-los uma vez, o registro passa a existir
+e as próximas atualizações são automáticas.
 
 ### Remover o comando global
 
@@ -276,7 +335,7 @@ preferências do modo global, não apenas a regra BMAD.
 
 Não há remoção automática: BMAD, Alethe e as customizações podem ter sido
 editados depois da instalação. Revise e remova manualmente apenas arquivos
-gerenciados que você reconhece. O script não apaga `_bmad/`, diretórios de
+gerenciados que você reconhece, incluindo `_bmad/_config/agentic-stack.json`. O script não apaga `_bmad/`, diretórios de
 skills, customizações ou dados do projeto.
 
 ## Solução de problemas
@@ -288,15 +347,23 @@ skills, customizações ou dados do projeto.
 - **`uv` ausente:** aceite o prompt ou use `--install-uv` em execução
   não interativa. Se não instalar, BMAD ainda pode ser instalado, mas algumas
   skills/scripts Python dependentes de `uv` não funcionarão.
+- **`uv` instalado, mas fora do PATH:** o comando também procura nos destinos
+  padrão do instalador oficial (`~/.local/bin`, `~/.cargo/bin`) e avisa para
+  reabrir o terminal.
+- **Git ausente:** Alethe não pode ser baixado; instale o Git ou use
+  `--skip-alethe`.
 - **Nenhuma ferramenta detectada:** informe `--tools` com os IDs aceitos.
 - **Alethe já existe:** os arquivos divergentes são preservados. Revise-os e
   repita com `--force` somente se deseja substituir arquivos da skill.
 - **BMAD não atualizou:** sem `--update-bmad`, `_bmad/` não é atualizado.
 - **Conflito ou caminho simbólico:** o comando informa o caminho e não segue
-  links simbólicos para fora do projeto.
-- **Lock existente:** outra execução pode estar ativa ou uma execução anterior
-  foi encerrada inesperadamente. Confirme que não há setup ativo antes de
-  remover o arquivo de lock temporário indicado pelo erro.
+  links simbólicos para fora do projeto. Junctions entre pastas de skills do
+  próprio projeto são aceitas.
+- **Lock existente:** outra execução está ativa. Locks de execuções
+  interrompidas são liberados automaticamente; se o erro persistir, confirme
+  que não há setup ativo antes de remover o arquivo indicado.
+- **Subdiretório de repositório:** o aviso indica que as IDEs podem não ler as
+  skills a partir dessa pasta; rode na raiz do workspace ou use `--target`.
 - **Modo Alethe já tem oito regras:** o upstream limita a oito. O template não
   limpa nem substitui regras; resolva a limitação pela interface documentada do
   Alethe antes de tentar novamente.
