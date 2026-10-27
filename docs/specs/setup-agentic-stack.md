@@ -3,7 +3,7 @@
 **ID:** SPEC-20261025-001  
 **Data:** 2026-10-25  
 **Autor:** Usuário solicitante  
-**Status:** APROVADO — revisão 3
+**Status:** APROVADO — revisão 5
 
 ## 1. Contexto
 
@@ -404,7 +404,9 @@ antes de afirmar integração automática ampla.
 4. Validar detecção e caminhos de instalação dos cinco IDs BMAD v6.12.4 nos
    três sistemas operacionais.
 
-## 9. Ajustes de robustez (revisão 4 — pendente de aprovação)
+## 9. Ajustes de robustez (revisão 4)
+
+Aprovada pelo usuário em 2026-10-27.
 
 Correções para instalar em projetos novos e em andamento, sem alterar o
 contrato de opções:
@@ -458,4 +460,5 @@ de instalação no projeto.
 | Revisor | Status | Data | Comentários |
 | --- | --- | --- | --- |
 | Usuário solicitante | ✅ Aprovado | 2026-10-25 | Aprovou a revisão 2 e autorizou implementação; confirmou manter opt-in global e a regra BMAD, com aviso de que `mode off --everywhere` limpa todas as regras/preferências globais (revisão 3). |
-| Usuário solicitante | ✅ Aprovado | 2026-10-27 | Aprovou a revisão 5 (§10): registro em `_bmad/_config/agentic-stack.json`, `.new` para arquivos editados e instalações sem registro tratadas como editadas. A revisão 4 (§9) segue pendente. |
+| Usuário solicitante | ✅ Aprovado | 2026-10-27 | Aprovou a revisão 4 (§9): ajustes de robustez para projetos novos e em andamento. |
+| Usuário solicitante | ✅ Aprovado | 2026-10-27 | Aprovou a revisão 5 (§10): registro em `_bmad/_config/agentic-stack.json`, `.new` para arquivos editados e instalações sem registro tratadas como editadas. |
