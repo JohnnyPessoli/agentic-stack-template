@@ -404,6 +404,28 @@ antes de afirmar integração automática ampla.
 4. Validar detecção e caminhos de instalação dos cinco IDs BMAD v6.12.4 nos
    três sistemas operacionais.
 
+## 9. Ajustes de robustez (revisão 4 — pendente de aprovação)
+
+Correções para instalar em projetos novos e em andamento, sem alterar o
+contrato de opções:
+
+1. Links simbólicos/junctions são aceitos somente quando o destino real é um
+   diretório dentro do projeto-alvo (ex.: `.claude/skills` → `.agents/skills`);
+   links para fora continuam recusados.
+2. O lock do projeto guarda o PID; um lock cujo processo não existe mais é
+   reaproveitado. Lock de processo ativo continua bloqueando.
+3. `uv` também é procurado nos destinos padrão do instalador oficial
+   (`UV_INSTALL_DIR`, `XDG_BIN_HOME`, `~/.local/bin`, `~/.cargo/bin`), com
+   aviso quando estiver fora do PATH.
+4. O instalador global planeja todas as cópias antes de gravar; com conflito ou
+   caminho inseguro, nenhum arquivo é alterado.
+5. Avisos não bloqueantes: destino em subdiretório de repositório Git e
+   ferramentas selecionadas ausentes do manifesto BMAD existente (sem passar
+   `--tools` ao update, conforme 2.5.8).
+6. `--dry-run` informa pré-requisitos detectados (Node.js, npm, Python, `uv`,
+   Git) sem instalar nada; Git ausente gera erro específico na etapa Alethe.
+7. O comando manual de ativação Alethe usa o interpretador Python detectado.
+
 ## Aprovação
 
 | Revisor | Status | Data | Comentários |
