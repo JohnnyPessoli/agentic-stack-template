@@ -426,8 +426,36 @@ contrato de opções:
    Git) sem instalar nada; Git ausente gera erro específico na etapa Alethe.
 7. O comando manual de ativação Alethe usa o interpretador Python detectado.
 
+## 10. Reinstalação sobre versões anteriores (revisão 5)
+
+Aprovada pelo usuário em 2026-10-27, seguindo as três recomendações propostas.
+Complementa §4.2: além dos arquivos listados ali, o comando grava um registro
+de instalação no projeto.
+
+1. **Registro:** `_bmad/_config/agentic-stack.json` (versionável com o
+   projeto) contém `format`, `templateVersion`, `aletheCommit` e o SHA-256 de
+   cada arquivo copiado pelo template, com chave relativa ao projeto. Não
+   armazena conteúdo. Só é gravado se `_bmad/_config` existir; o update BMAD
+   6.12.4 não remove esse diretório.
+2. **Decisão por arquivo:** igual à versão nova → nada; igual ao hash
+   registrado → atualizar sem `--force`; diferente de ambos → preservar e gravar
+   a versão nova em `<arquivo>.new`; presente no registro, mas ausente do
+   template novo → manter e listar para remoção manual.
+3. **Atomicidade:** Kent e Alethe são atualizados por inteiro por destino; com
+   qualquer arquivo editado ou caminho inseguro, nenhum arquivo do componente é
+   alterado (exceto os `.new`). Overrides de `_bmad/custom` são independentes e
+   atualizados individualmente.
+4. **Sem registro (instalações 1.0.0, scripts manuais, registro inválido ou
+   perdido):** arquivos divergentes são tratados como editados.
+5. Um `.new` gerado pelo template é removido apenas quando fica idêntico ao
+   arquivo já resolvido. `--force` mantém o comportamento de substituir os
+   arquivos de template conflitantes.
+6. `--dry-run` mostra o estado do registro e o plano para `_bmad/custom` e Kent;
+   o resumo informa a versão anterior, o registro gravado e arquivos obsoletos.
+
 ## Aprovação
 
 | Revisor | Status | Data | Comentários |
 | --- | --- | --- | --- |
 | Usuário solicitante | ✅ Aprovado | 2026-10-25 | Aprovou a revisão 2 e autorizou implementação; confirmou manter opt-in global e a regra BMAD, com aviso de que `mode off --everywhere` limpa todas as regras/preferências globais (revisão 3). |
+| Usuário solicitante | ✅ Aprovado | 2026-10-27 | Aprovou a revisão 5 (§10): registro em `_bmad/_config/agentic-stack.json`, `.new` para arquivos editados e instalações sem registro tratadas como editadas. A revisão 4 (§9) segue pendente. |

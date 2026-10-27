@@ -283,6 +283,42 @@ If `~/.local/bin` already holds `setup-agentic-stack*` wrappers from another
 source, such as earlier personal scripts, they show up as conflicts. Back them
 up before using `--force`.
 
+### Update an already configured project
+
+After updating the global command, run it again from the project root:
+
+```sh
+setup-agentic-stack --dry-run   # shows what will be updated
+setup-agentic-stack
+```
+
+Each run writes the template version and the hash of every copied file (Kent,
+`_bmad/custom`, and Alethe) to `_bmad/_config/agentic-stack.json`, with no file
+contents. Commit that file with the project. On the next run, each file is
+handled like this:
+
+| File state in the project | What happens |
+| --- | --- |
+| Same as the new version | Nothing to do |
+| Same as what was installed (not edited) | Updated automatically, no `--force` needed |
+| Different from both (edited) | Preserved; the new version is written next to it as `<file>.new` |
+| Removed in the new version | Kept and listed in the summary for manual removal |
+
+Kent and Alethe are updated as a whole or not at all: if any file of one of
+them was edited, no file in that component changes, so a skill never ends up
+half in each version. `_bmad/custom` overrides are independent and are updated
+one by one.
+
+To resolve a conflict, compare the file with its `.new`, merge what you want,
+and run the command again; the `.new` is removed automatically once the file
+matches the new version. To discard your edits and accept everything, use
+`--force`.
+
+Projects configured before the registry existed (version 1.0.0 or manual
+scripts) have no history: differing files are treated as edited and preserved,
+with a `.new` next to them. After you review them once, the registry exists and
+later updates are automatic.
+
 ### Remove the global command
 
 There is no automatic uninstall command that deletes directories without
@@ -299,7 +335,7 @@ and preferences, not just the BMAD rule.
 
 There is no automatic project uninstall because BMAD, Alethe, or their
 customizations may have been edited after setup. Review and remove only managed
-files you recognize. The script does not delete `_bmad/`, skill directories,
+files you recognize, including `_bmad/_config/agentic-stack.json`. The script does not delete `_bmad/`, skill directories,
 customizations, or project data.
 
 ## Troubleshooting

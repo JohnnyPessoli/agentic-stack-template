@@ -283,6 +283,42 @@ Se `~/.local/bin` já tiver wrappers `setup-agentic-stack*` de outra origem,
 como scripts pessoais anteriores, eles aparecem como conflito. Guarde-os antes
 de usar `--force`.
 
+### Atualizar um projeto já configurado
+
+Depois de atualizar o comando global, rode de novo na raiz do projeto:
+
+```sh
+setup-agentic-stack --dry-run   # mostra o que será atualizado
+setup-agentic-stack
+```
+
+Cada execução grava em `_bmad/_config/agentic-stack.json` a versão do template
+e o hash de cada arquivo copiado (Kent, `_bmad/custom` e Alethe), sem conteúdo.
+Versione esse arquivo junto com o projeto. Na execução seguinte, cada arquivo é
+tratado assim:
+
+| Estado do arquivo no projeto | O que acontece |
+| --- | --- |
+| Igual à versão nova | Nada a fazer |
+| Igual ao que foi instalado (não editado) | Atualizado automaticamente, sem `--force` |
+| Diferente dos dois (editado) | Preservado; a versão nova é gravada ao lado como `<arquivo>.new` |
+| Removido na versão nova | Mantido e listado no resumo para remoção manual |
+
+Kent e Alethe são atualizados por inteiro ou não são atualizados: se um arquivo
+de um deles foi editado, nenhum arquivo daquele componente muda, evitando uma
+skill com metade em cada versão. Já os overrides de `_bmad/custom` são
+independentes e atualizados um a um.
+
+Para resolver um conflito, compare o arquivo com o `.new`, incorpore o que
+quiser e rode o comando de novo; o `.new` é removido automaticamente quando o
+arquivo fica igual à versão nova. Para descartar suas edições e aceitar tudo,
+use `--force`.
+
+Projetos configurados antes do registro (versão 1.0.0 ou scripts manuais) não
+têm histórico: arquivos divergentes são tratados como editados e preservados,
+com o `.new` ao lado. Depois de revisá-los uma vez, o registro passa a existir
+e as próximas atualizações são automáticas.
+
 ### Remover o comando global
 
 O template não fornece um comando de desinstalação que apague diretórios sem
@@ -299,7 +335,7 @@ preferências do modo global, não apenas a regra BMAD.
 
 Não há remoção automática: BMAD, Alethe e as customizações podem ter sido
 editados depois da instalação. Revise e remova manualmente apenas arquivos
-gerenciados que você reconhece. O script não apaga `_bmad/`, diretórios de
+gerenciados que você reconhece, incluindo `_bmad/_config/agentic-stack.json`. O script não apaga `_bmad/`, diretórios de
 skills, customizações ou dados do projeto.
 
 ## Solução de problemas
