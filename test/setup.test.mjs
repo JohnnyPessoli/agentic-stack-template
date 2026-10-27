@@ -34,6 +34,7 @@ import {
   runSetup,
   templateRoot,
 } from "../lib/setup.mjs";
+import { hashBytes, readRegistry, registryPath, writeRegistry } from "../lib/registry.mjs";
 
 function temporaryDirectory(t) {
   const directory = mkdtempSync(path.join(os.tmpdir(), "agentic-stack-test-"));
@@ -169,6 +170,126 @@ test("safe copy preserves conflicts unless force is explicit", (t) => {
   const replaced = copyTreeSafe(source, destination, { force: true, root: project });
   assert.equal(readFileSync(path.join(destination, "SKILL.md"), "utf8"), "new");
   assert.equal(replaced.copied.length, 1);
+});
+
+function templatePair(t) {
+  const directory = temporaryDirectory(t);
+  const source = path.join(directory, "source");
+  const project = path.join(directory, "project");
+  const destination = path.join(project, ".agents", "skills", "example");
+  mkdirSync(source);
+  mkdirSync(destination, { recursive: true });
+  writeFileSync(path.join(source, "a.md"), "v2 a");
+  writeFileSync(path.join(source, "b.md"), "v2 b");
+  writeFileSync(path.join(destination, "a.md"), "v1 a");
+  writeFileSync(path.join(destination, "b.md"), "user edit");
+  const installed = {
+    [path.join(destination, "a.md")]: hashBytes(Buffer.from("v1 a")),
+    [path.join(destination, "b.md")]: hashBytes(Buffer.from("v1 b")),
+  };
+  return { source, project, destination, installedHash: (file) => installed[file] };
+}
+
+test("template copy upgrades untouched files and keeps edited ones with a .new copy", (t) => {
+  const { source, project, destination, installedHash } = templatePair(t);
+  const result = copyTreeSafe(source, destination, { root: project, installedHash, sidecar: true });
+  assert.deepEqual(result.upgraded, [path.join(destination, "a.md")]);
+  assert.deepEqual(result.conflicts, [path.join(destination, "b.md")]);
+  assert.equal(readFileSync(path.join(destination, "a.md"), "utf8"), "v2 a");
+  assert.equal(readFileSync(path.join(destination, "b.md"), "utf8"), "user edit");
+  assert.equal(readFileSync(path.join(destination, "b.md.new"), "utf8"), "v2 b");
+});
+
+test("atomic template copy never leaves a component with mixed versions", (t) => {
+  const { source, project, destination, installedHash } = templatePair(t);
+  const result = copyTreeSafe(source, destination, { root: project, installedHash, sidecar: true, atomic: true });
+  assert.equal(result.blocked, true);
+  assert.equal(readFileSync(path.join(destination, "a.md"), "utf8"), "v1 a");
+  assert.equal(readFileSync(path.join(destination, "b.md.new"), "utf8"), "v2 b");
+
+  writeFileSync(path.join(destination, "b.md"), readFileSync(path.join(destination, "b.md.new")));
+  const resolved = copyTreeSafe(source, destination, { root: project, installedHash, sidecar: true, atomic: true });
+  assert.equal(resolved.blocked, false);
+  assert.equal(readFileSync(path.join(destination, "a.md"), "utf8"), "v2 a");
+  assert.equal(existsSync(path.join(destination, "b.md.new")), false);
+});
+
+test("registry round-trip keeps valid entries and rejects unsafe ones", (t) => {
+  const project = temporaryDirectory(t);
+  assert.equal(writeRegistry(project, { templateVersion: "1.1.0", files: {} }), false);
+  mkdirSync(path.join(project, "_bmad", "_config"), { recursive: true });
+  const hash = hashBytes(Buffer.from("x"));
+  assert.equal(
+    writeRegistry(project, {
+      templateVersion: "1.1.0",
+      aletheCommit: ALETHE_COMMIT,
+      files: { "_bmad/custom/z.toml": hash, "../outside": hash, "_bmad/custom/a.toml": "not-a-hash" },
+    }),
+    true,
+  );
+  const registry = readRegistry(project);
+  assert.equal(registry.valid, true);
+  assert.equal(registry.templateVersion, "1.1.0");
+  assert.deepEqual(registry.files, { "_bmad/custom/z.toml": hash });
+
+  writeFileSync(registryPath(project), "{ broken");
+  assert.equal(readRegistry(project).valid, false);
+  assert.deepEqual(readRegistry(project).files, {});
+});
+
+test("re-running setup over an older install updates untouched files and preserves edits", async (t) => {
+  const directory = temporaryDirectory(t);
+  const project = path.join(directory, "project");
+  mkdirSync(path.join(project, "_bmad", "_config"), { recursive: true });
+  writeFileSync(path.join(project, "_bmad", "_config", "manifest.yaml"), "installation:\n  version: 6.12.4\nides:\n  - codex\n");
+  const output = [];
+  const setup = () =>
+    runSetup(["--target", project, "--tools", "codex", "--skip-alethe"], {
+      out: (message) => output.push(message),
+      error: (message) => output.push(message),
+      env: { PATH: "" },
+      home: directory,
+      askYesNo: async () => false,
+    });
+  const custom = path.join(project, "_bmad", "custom");
+  const kent = path.join(project, ".agents", "skills", "bmad-agent-tdd");
+  const template = (...segments) => readFileSync(path.join(templateRoot(), ...segments), "utf8");
+  const key = (...segments) => path.relative(project, path.join(...segments)).split(path.sep).join("/");
+
+  assert.equal(await setup(), 0);
+  const firstRegistry = readRegistry(project);
+  assert.equal(firstRegistry.templateVersion, "1.1.0");
+  assert.ok(firstRegistry.files[key(kent, "SKILL.md")]);
+
+  // Simula uma instalação de versão anterior: um arquivo intacto, outros editados
+  // e um arquivo que deixou de existir no template.
+  const files = { ...firstRegistry.files };
+  const old = (file, content) => {
+    writeFileSync(file, content);
+    files[key(file)] = hashBytes(Buffer.from(content));
+  };
+  old(path.join(custom, "bmad-agent-dev.toml"), "old dev");
+  writeFileSync(path.join(custom, "bmad-agent-pm.toml"), "team edit");
+  old(path.join(kent, "customize.toml"), "old kent");
+  writeFileSync(path.join(kent, "SKILL.md"), "edited kent");
+  old(path.join(kent, "old-notes.md"), "obsolete");
+  writeRegistry(project, { templateVersion: "1.0.0", files });
+
+  output.length = 0;
+  assert.equal(await setup(), 0);
+  assert.ok(output.some((line) => line.includes("template 1.0.0; aplicando a versão 1.1.0")));
+  assert.equal(readFileSync(path.join(custom, "bmad-agent-dev.toml"), "utf8"), template("custom", "bmad-agent-dev.toml"));
+  assert.equal(readFileSync(path.join(custom, "bmad-agent-pm.toml"), "utf8"), "team edit");
+  assert.equal(readFileSync(path.join(custom, "bmad-agent-pm.toml.new"), "utf8"), template("custom", "bmad-agent-pm.toml"));
+  assert.equal(readFileSync(path.join(kent, "customize.toml"), "utf8"), "old kent");
+  assert.ok(existsSync(path.join(kent, "SKILL.md.new")));
+  assert.ok(existsSync(path.join(kent, "old-notes.md")));
+  assert.ok(output.some((line) => line.includes("não fazem mais parte") && line.includes("old-notes.md")));
+
+  writeFileSync(path.join(kent, "SKILL.md"), readFileSync(path.join(kent, "SKILL.md.new")));
+  assert.equal(await setup(), 0);
+  assert.equal(readFileSync(path.join(kent, "customize.toml"), "utf8"), template("skills", "bmad-agent-tdd", "customize.toml"));
+  assert.equal(existsSync(path.join(kent, "SKILL.md.new")), false);
 });
 
 test("safe copy can plan and create a standalone file under an allowed root", (t) => {
