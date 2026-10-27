@@ -21,10 +21,15 @@ import {
   ALLOWED_TOOLS,
   buildBmadArgs,
   copyTreeSafe,
+  createProjectLock,
   detectTools,
+  findRepositoryRoot,
+  findUv,
   inspectBmadInstallation,
+  missingBmadTools,
   parseArgs,
   parseTools,
+  projectLockPath,
   resolveTarget,
   runSetup,
   templateRoot,
@@ -35,6 +40,9 @@ function temporaryDirectory(t) {
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   return directory;
 }
+
+// Junctions não exigem privilégio de administrador no Windows.
+const DIRECTORY_LINK = process.platform === "win32" ? "junction" : "dir";
 
 test("parses the explicit update option and tool allowlist", () => {
   const parsed = parseArgs([
@@ -207,7 +215,7 @@ test("dry-run copy reports planned files without creating directories", (t) => {
   assert.equal(existsSync(destination), false);
 });
 
-test("safe copy does not follow a symbolic link out of the project", { skip: process.platform === "win32" }, (t) => {
+test("safe copy does not follow a symbolic link out of the project", (t) => {
   const directory = temporaryDirectory(t);
   const source = path.join(directory, "source");
   const project = path.join(directory, "project");
@@ -216,11 +224,89 @@ test("safe copy does not follow a symbolic link out of the project", { skip: pro
   mkdirSync(project);
   mkdirSync(outside);
   writeFileSync(path.join(source, "SKILL.md"), "content");
-  symlinkSync(outside, path.join(project, "linked"), "dir");
+  symlinkSync(outside, path.join(project, "linked"), DIRECTORY_LINK);
 
   const result = copyTreeSafe(source, path.join(project, "linked", "skill"), { root: project });
   assert.equal(result.unsafe.length, 1);
   assert.deepEqual(readdirSync(outside), []);
+});
+
+test("safe copy accepts a skills link that stays inside the project", (t) => {
+  const directory = temporaryDirectory(t);
+  const source = path.join(directory, "source");
+  const project = path.join(directory, "project");
+  const sharedSkills = path.join(project, ".agents", "skills");
+  mkdirSync(source);
+  mkdirSync(sharedSkills, { recursive: true });
+  mkdirSync(path.join(project, ".claude"));
+  writeFileSync(path.join(source, "SKILL.md"), "content");
+  symlinkSync(sharedSkills, path.join(project, ".claude", "skills"), DIRECTORY_LINK);
+
+  const result = copyTreeSafe(source, path.join(project, ".claude", "skills", "kent"), { root: project });
+  assert.deepEqual(result.unsafe, []);
+  assert.equal(readFileSync(path.join(sharedSkills, "kent", "SKILL.md"), "utf8"), "content");
+});
+
+test("project lock blocks a live owner but reclaims a lock left by a dead process", (t) => {
+  const directory = temporaryDirectory(t);
+  const lockPath = projectLockPath(directory);
+  t.after(() => rmSync(lockPath, { force: true }));
+
+  const release = createProjectLock(directory);
+  assert.throws(() => createProjectLock(directory), /Outra execução/);
+  release();
+
+  const finished = spawnSync(process.execPath, ["-e", ""]);
+  writeFileSync(lockPath, `${finished.pid}\n`);
+  const releaseReclaimed = createProjectLock(directory);
+  assert.equal(readFileSync(lockPath, "utf8").trim(), String(process.pid));
+  releaseReclaimed();
+  assert.equal(existsSync(lockPath), false);
+});
+
+test("finds uv in the official install directory when PATH was not refreshed", (t) => {
+  const directory = temporaryDirectory(t);
+  const bin = path.join(directory, ".local", "bin");
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(path.join(bin, process.platform === "win32" ? "uv.exe" : "uv"), "");
+
+  assert.equal(findUv({ PATH: "" }, path.join(directory, "empty-home")), undefined);
+  assert.deepEqual(findUv({ PATH: "" }, directory), {
+    path: path.join(bin, process.platform === "win32" ? "uv.exe" : "uv"),
+    onPath: false,
+  });
+  assert.equal(findUv({ PATH: bin }, directory).onPath, true);
+});
+
+test("reports BMAD tools missing from an existing installation", () => {
+  const info = { version: "6.12.4", modules: ["bmm"], tools: ["claude-code"] };
+  assert.deepEqual(missingBmadTools(info, ["claude-code", "codex"]), ["codex"]);
+  assert.deepEqual(missingBmadTools({ ...info, tools: [] }, ["codex"]), []);
+});
+
+test("dry-run warns about a Git subdirectory and BMAD tools not yet integrated", async (t) => {
+  const directory = temporaryDirectory(t);
+  const repository = path.join(directory, "repo");
+  const project = path.join(repository, "packages", "app");
+  mkdirSync(path.join(repository, ".git"), { recursive: true });
+  mkdirSync(path.join(project, "_bmad", "_config"), { recursive: true });
+  writeFileSync(
+    path.join(project, "_bmad", "_config", "manifest.yaml"),
+    "installation:\n  version: 6.12.4\nides:\n  - claude-code\n",
+  );
+  assert.equal(findRepositoryRoot(realpathSync(project)), realpathSync(repository));
+
+  const output = [];
+  const status = await runSetup(["--target", project, "--tools", "codex", "--dry-run", "--skip-alethe"], {
+    out: (message) => output.push(message),
+    error: (message) => output.push(message),
+    env: { PATH: "" },
+    home: directory,
+  });
+  assert.equal(status, 0);
+  assert.ok(output.some((line) => line.includes("não é a raiz")));
+  assert.ok(output.some((line) => line.includes("não registra integração para: codex")));
+  assert.ok(output.some((line) => line.startsWith("Pré-requisitos")));
 });
 
 test("dry-run setup does not write or invoke external installers", async (t) => {
@@ -256,6 +342,45 @@ test("global installer dry-run does not create files in the selected home", (t) 
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(readdirSync(home), []);
+});
+
+function runGlobalInstaller(home, args = []) {
+  return spawnSync(process.execPath, [path.join(templateRoot(), "..", "scripts", "install.mjs"), ...args], {
+    encoding: "utf8",
+    input: "",
+    env: { ...process.env, HOME: home, USERPROFILE: home, SHELL: "" },
+  });
+}
+
+test("global installer installs into an empty home and is idempotent", (t) => {
+  const home = path.join(temporaryDirectory(t), "home");
+  mkdirSync(home);
+  const first = runGlobalInstaller(home);
+  assert.equal(first.status, 0, first.stderr);
+  assert.ok(existsSync(path.join(home, ".agentic-stack-template", "lib", "setup.mjs")));
+  assert.ok(existsSync(path.join(home, ".local", "bin", "setup-agentic-stack")));
+  const second = runGlobalInstaller(home);
+  assert.equal(second.status, 0, second.stderr);
+});
+
+test("global installer writes nothing when an update has unreviewed conflicts", (t) => {
+  const home = path.join(temporaryDirectory(t), "home");
+  const installRoot = path.join(home, ".agentic-stack-template");
+  mkdirSync(path.join(installRoot, "lib"), { recursive: true });
+  writeFileSync(path.join(installRoot, "lib", "setup.mjs"), "old version");
+  writeFileSync(path.join(installRoot, "package.json"), '{"name":"agentic-stack-template"}');
+
+  const result = runGlobalInstaller(home);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /nenhum arquivo foi alterado/);
+  assert.match(result.stderr, /instalação anterior/);
+  assert.equal(existsSync(path.join(installRoot, "bin")), false);
+  assert.equal(existsSync(path.join(home, ".local")), false);
+  assert.equal(readFileSync(path.join(installRoot, "lib", "setup.mjs"), "utf8"), "old version");
+
+  const forced = runGlobalInstaller(home, ["--force"]);
+  assert.equal(forced.status, 0, forced.stderr);
+  assert.notEqual(readFileSync(path.join(installRoot, "lib", "setup.mjs"), "utf8"), "old version");
 });
 
 test("source contains a pinned Alethe revision without vendoring its files", () => {

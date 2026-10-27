@@ -168,6 +168,20 @@ function planGeneratedFiles(files, root, destinationDirectory) {
   return result;
 }
 
+function copyManagedFiles(copyOptions) {
+  return [...managedDirectories, ...managedFiles].map((entry) =>
+    copyTreeSafe(path.join(sourceRoot, entry), path.join(installRoot, entry), { ...copyOptions, root: home }),
+  );
+}
+
+function isPreviousInstall() {
+  try {
+    return JSON.parse(readFileSync(path.join(installRoot, "package.json"), "utf8")).name === "agentic-stack-template";
+  } catch {
+    return false;
+  }
+}
+
 function writeWrappers(directory) {
   for (const [name, content] of Object.entries(wrapperContents())) {
     writeFileSync(path.join(directory, name), content, { mode: name === "setup-agentic-stack" ? 0o755 : 0o644 });
@@ -201,55 +215,55 @@ async function main() {
   process.stdout.write(`Instalação local: ${installRoot}\nComandos globais: ${binDirectory}\n`);
   if (options.dryRun) process.stdout.write("Modo dry-run; nenhuma alteração será feita.\n");
 
-  const copyOptions = { force: options.force, dryRun: options.dryRun };
-  const results = [];
-  for (const entry of managedDirectories) {
-    results.push(copyTreeSafe(path.join(sourceRoot, entry), path.join(installRoot, entry), { ...copyOptions, root: home }));
-  }
-  for (const entry of managedFiles) {
-    results.push(
-      copyTreeSafe(path.join(sourceRoot, entry), path.join(installRoot, entry), {
-        ...copyOptions,
-        root: home,
-      }),
-    );
-  }
-
-  if (options.dryRun) {
-    results.push(planGeneratedFiles(wrapperContents(), home, binDirectory));
-  } else {
-    const wrappers = mkdtempSync(path.join(os.tmpdir(), "agentic-stack-wrappers-"));
-    try {
-      writeWrappers(wrappers);
-      results.push(copyTreeSafe(wrappers, binDirectory, { ...copyOptions, root: home }));
-    } finally {
-      rmSync(wrappers, { recursive: true, force: true });
-    }
-  }
-
-  const conflicts = results.flatMap((result) => result.conflicts);
-  const unsafe = results.flatMap((result) => result.unsafe);
-  for (const result of results) {
+  // Planeja tudo antes de gravar: com conflito, nada é escrito, evitando uma
+  // instalação com arquivos de versões diferentes.
+  const planned = [
+    ...copyManagedFiles({ force: options.force, dryRun: true }),
+    planGeneratedFiles(wrapperContents(), home, binDirectory),
+  ];
+  const conflicts = planned.flatMap((result) => result.conflicts);
+  const unsafe = planned.flatMap((result) => result.unsafe);
+  for (const result of planned) {
     if (options.dryRun) {
       for (const file of result.copied) process.stdout.write(`Planejado: copiar ${file}\n`);
-    } else {
-      if (result.copied.length) process.stdout.write(`Arquivos novos/atualizados: ${result.copied.length}\n`);
-      if (result.unchanged.length) process.stdout.write(`Arquivos já iguais: ${result.unchanged.length}\n`);
+      for (const file of result.unchanged) process.stdout.write(`Sem alteração: ${file}\n`);
     }
-    for (const file of result.unchanged) process.stdout.write(`Sem alteração: ${file}\n`);
     for (const file of result.conflicts) process.stdout.write(`Conflito: ${file}\n`);
     for (const file of result.unsafe) process.stdout.write(`Bloqueado: ${file}\n`);
   }
   if (conflicts.length) {
-    process.stderr.write("Conflitos preservados. Revise os caminhos ou repita com --force:\n");
+    process.stderr.write(
+      options.dryRun
+        ? "Conflitos encontrados. Revise os caminhos ou repita com --force:\n"
+        : "Conflitos encontrados; nenhum arquivo foi alterado. Revise os caminhos ou repita com --force:\n",
+    );
     for (const file of conflicts) process.stderr.write(`  - ${file}\n`);
+    if (isPreviousInstall()) {
+      process.stderr.write("Há uma instalação anterior deste template; para atualizá-la após revisar, use --force.\n");
+    }
   }
   if (unsafe.length) {
     process.stderr.write("Caminhos simbólicos/incompatíveis foram preservados por segurança:\n");
     for (const file of unsafe) process.stderr.write(`  - ${file}\n`);
   }
-  if (options.dryRun) return conflicts.length || unsafe.length ? 1 : 0;
-  if (conflicts.length || unsafe.length) return 1;
+  if (options.dryRun || conflicts.length || unsafe.length) return conflicts.length || unsafe.length ? 1 : 0;
+
+  const results = copyManagedFiles({ force: options.force, dryRun: false });
+  const wrappers = mkdtempSync(path.join(os.tmpdir(), "agentic-stack-wrappers-"));
+  try {
+    writeWrappers(wrappers);
+    results.push(copyTreeSafe(wrappers, binDirectory, { force: options.force, root: home }));
+  } finally {
+    rmSync(wrappers, { recursive: true, force: true });
+  }
+  const copied = results.reduce((total, result) => total + result.copied.length, 0);
+  const unchanged = results.reduce((total, result) => total + result.unchanged.length, 0);
+  if (copied) process.stdout.write(`Arquivos novos/atualizados: ${copied}\n`);
+  if (unchanged) process.stdout.write(`Arquivos já iguais: ${unchanged}\n`);
+  if (results.some((result) => result.conflicts.length || result.unsafe.length)) {
+    process.stderr.write("Os arquivos mudaram durante a instalação; execute novamente para revisar o estado.\n");
+    return 1;
+  }
 
   const currentPath = (process.env.PATH || "").split(path.delimiter);
   const pathConfigured = currentPath.some((entry) =>
