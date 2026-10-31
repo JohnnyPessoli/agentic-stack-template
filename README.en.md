@@ -6,7 +6,8 @@ you do not need to copy scripts into every project manually.
 
 **Português:** [Leia em português](README.md).
 
-> Alethe is the default entry point after its global mode is enabled. Describe
+> Alethe is the project's default entry point: setup writes an instruction
+> block to `AGENTS.md`/`CLAUDE.md`, which every supported tool reads. Describe
 > work in natural language without naming a BMAD persona. Alethe selects
 > relevant BMAD workflows/personas when useful, decides whether to work
 > directly, and may delegate independent units to CLI workers. It does not
@@ -16,15 +17,16 @@ you do not need to copy scripts into every project manually.
 
 | Component | Role | What it does not mean |
 | --- | --- | --- |
-| **Alethe** | Default lead/orchestrator after explicit global opt-in. Understands the request, selects relevant guidance, and chooses direct work or delegation. | It is not a BMAD persona and does not require parallel work for every task. |
+| **Alethe** | Default lead/orchestrator through the project instruction block. Understands the request, selects relevant guidance, and chooses direct work or delegation. | It is not a BMAD persona and does not require parallel work for every task. |
 | **BMAD** | Method, workflows, and specialist personas for architecture, development, product, and related work. | It is not this stack's CLI-worker orchestrator. |
 | **Kent** | TDD persona that discovers and respects the project's existing test runner and conventions. | It does not install Vitest/Jest/pytest or impose directories or coverage thresholds. |
 | **CLI worker** | External tool that may execute a unit delegated by Alethe. | A worker is not automatically a BMAD persona or workflow. |
 
-The installer places the Alethe skill in the selected IDE skill directories.
-With separate consent, it also enables Alethe's official global mode and adds
-a conditional instruction to select BMAD when a project has BMAD installed.
-Global mode applies to all your projects and has no expiry. Actual behavior
+The installer places the Alethe skill in the selected IDE skill directories and
+writes the project instruction block that ties Alethe, BMAD, and Kent together.
+With separate consent, it also enables Alethe's official global mode with the
+same rule; global mode applies to all your projects and has no expiry, but it
+only reaches the agent in tools that run Alethe's hook. Actual behavior
 depends on the IDE and agent in use.
 
 ## Prerequisites
@@ -178,6 +180,9 @@ overrides detection; it does not install an IDE.
    separate consent to enable Alethe in every project and add the BMAD rule.
    Declining keeps the local skill installation and leaves global settings
    unchanged.
+6. **Project instructions:** writes the BMAD + Alethe block to `AGENTS.md`
+   (Codex, Cursor, GitHub Copilot, Antigravity) and/or `CLAUDE.md` (Claude
+   Code). See [Alethe as the default entry point](#alethe-as-the-default-entry-point).
 
 ## Command options
 
@@ -190,6 +195,7 @@ overrides detection; it does not install an IDE.
 --update-bmad                 Update existing BMAD through the pinned official action
 --skip-alethe                 Do not install Alethe or change its global mode
 --enable-alethe-everywhere    Authorize global activation without a prompt
+--skip-agent-instructions     Do not create or change the block in AGENTS.md/CLAUDE.md
 --help                        Show help
 ```
 
@@ -209,7 +215,43 @@ interrupted run is reclaimed automatically once its owning process is gone.
 
 ## Alethe as the default entry point
 
-After you opt in, the command uses Alethe's documented interface equivalent to:
+### Project instruction block
+
+Alethe and BMAD are tied together by a managed block written at the project
+root, in the file each tool always reads:
+
+| Tool | File |
+| --- | --- |
+| Codex, Cursor, GitHub Copilot, Antigravity | `AGENTS.md` |
+| Claude Code | `CLAUDE.md` |
+
+The block content is in Portuguese (the stack's configured language); see the
+[Portuguese README](README.md#bloco-de-instruções-do-projeto) for the exact
+text. In short: act as lead with the `alethe` skill and choose direct work or
+delegation; use relevant BMAD workflows/personas without requiring the person
+to name them; follow Kent (`bmad-agent-tdd`) for tests.
+
+- A missing file is created with only the block; an existing file gets the
+  block appended, and nothing outside the markers changes. LF/CRLF is kept.
+- `--skip-alethe` writes the block without the Alethe line.
+  `--skip-agent-instructions` leaves these files untouched.
+- Updates follow the same rules as other template files: an unedited block is
+  updated automatically; an edited block is preserved and the new version goes
+  to `AGENTS.md.new`/`CLAUDE.md.new`; `--force` replaces only the block.
+- If you delete the block, later runs do not add it back (use `--force` if you
+  change your mind).
+- Commit `AGENTS.md`/`CLAUDE.md` with the project.
+
+The block is an instruction for the model, not a guarantee. To invoke Alethe
+explicitly: `/alethe <task>` in Claude Code, Copilot, and Cursor;
+`$alethe <task>` in Codex; or, in any tool, “use the alethe skill to …”.
+
+### Global mode (optional)
+
+Alethe's global mode is applied only by tools that run Alethe's hook on every
+prompt; this template installs no hooks. The project block is therefore the
+primary mechanism. After you opt in, the command uses Alethe's documented
+interface equivalent to:
 
 ```text
 mode on --everywhere --rule "<conditional BMAD instruction>"
@@ -243,8 +285,8 @@ not clear preferences.
 
 ## Worked example
 
-Suppose an existing repository contains a book catalog. After setting it up
-and opting into global Alethe mode, ask:
+Suppose an existing repository contains a book catalog. After setting it up,
+ask:
 
 > I want to export to CSV the books shown after applying the page filters.
 > Before implementation, identify the contract decisions and how this project
@@ -319,6 +361,67 @@ scripts) have no history: differing files are treated as edited and preserved,
 with a `.new` next to them. After you review them once, the registry exists and
 later updates are automatic.
 
+### Update projects already using the template
+
+Version 1.2.0 adds the [project instruction block](#project-instruction-block)
+that makes Alethe lead and use BMAD without you naming personas. Projects set up
+with earlier versions (1.0.0, 1.1.0, or manual scripts) get this change through
+the same command, without losing anything:
+
+1. **Update the global command** (once per machine):
+
+   ```sh
+   cd path/to/agentic-stack-template
+   git pull
+   ./install.sh        # or .\install.ps1 / install.cmd
+   ```
+
+2. **In each project**, at its root, review and apply:
+
+   ```sh
+   setup-agentic-stack --dry-run
+   setup-agentic-stack
+   ```
+
+   The dry-run prints `Atualização 1.1.0 → 1.2.0` and what will happen to
+   `AGENTS.md`/`CLAUDE.md`. If detection does not find the same tools as
+   before, pass them with `--tools`; the installed list is under `ides:` in
+   `_bmad/_config/manifest.yaml`.
+
+3. **Review and commit** `AGENTS.md`, `CLAUDE.md`, and
+   `_bmad/_config/agentic-stack.json` together.
+
+What this update does:
+
+| Project state | Result |
+| --- | --- |
+| No `AGENTS.md`/`CLAUDE.md` | File created with only the block |
+| `AGENTS.md`/`CLAUDE.md` with your own content | Block appended; your content stays intact |
+| You already wrote similar guidance | Review the dry-run; use `--skip-agent-instructions` or delete the block afterwards (it will not come back) |
+| Kent, `_bmad/custom`, Alethe | Follow the table in the previous section |
+| Global Alethe mode already enabled | Unchanged; the rule is not duplicated |
+
+For several projects in a row, run the dry-run first, review the output, then
+repeat without `--dry-run`:
+
+```powershell
+# PowerShell
+foreach ($p in "C:\Projects\app-a", "C:\Projects\app-b") {
+  setup-agentic-stack --target $p --dry-run
+}
+```
+
+```sh
+# Git Bash, macOS, or Linux
+for p in ~/projects/app-a ~/projects/app-b; do
+  setup-agentic-stack --target "$p" --dry-run
+done
+```
+
+Without `--dry-run`, each project still asks about `uv` and global mode in the
+terminal; if global mode is already enabled, just answer “no”. Non-interactive
+runs do none of this without the explicit flags.
+
 ### Remove the global command
 
 There is no automatic uninstall command that deletes directories without
@@ -336,7 +439,9 @@ and preferences, not just the BMAD rule.
 There is no automatic project uninstall because BMAD, Alethe, or their
 customizations may have been edited after setup. Review and remove only managed
 files you recognize, including `_bmad/_config/agentic-stack.json`. The script does not delete `_bmad/`, skill directories,
-customizations, or project data.
+customizations, or project data. In `AGENTS.md`/`CLAUDE.md`, delete only the
+lines from `<!-- agentic-stack:begin` through `<!-- agentic-stack:end -->`
+(inclusive), and the file itself if it only held the block.
 
 ## Troubleshooting
 
@@ -356,6 +461,11 @@ customizations, or project data.
 - **Alethe already exists:** differing files are preserved. Review them and
   retry with `--force` only if you want to replace skill files.
 - **BMAD did not update:** `_bmad/` is not updated without `--update-bmad`.
+- **Incomplete or duplicated `agentic-stack` markers:** the instruction file
+  is not changed, not even with `--force`. Keep a single begin/end pair (or
+  remove both) and run again.
+- **The agent ignores the block:** make sure the project root is the open
+  workspace and invoke Alethe explicitly with `/alethe` or `$alethe`.
 - **Conflict or symbolic path:** the command reports the path and will not
   follow symlinks out of the project. Junctions between the project's own
   skill folders are accepted.
