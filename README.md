@@ -44,6 +44,69 @@ e do agente que você usa.
 Node.js e Python não são instalados automaticamente. Nenhuma etapa requer
 elevação de privilégios.
 
+## Instalar pelo seu agente de IA
+
+Alternativa às seções 1 e 2: abra o projeto na sua ferramenta, em modo agente
+(com permissão para executar comandos no terminal), e cole o prompt abaixo,
+trocando `<ID>` pelo ID da tabela. O agente executa os mesmos instaladores
+descritos neste README e pede sua confirmação nas decisões importantes.
+
+| Ferramenta | Onde colar | `<ID>` |
+| --- | --- | --- |
+| Claude Code (CLI, VS Code, desktop) | Chat do Claude Code | `claude-code` |
+| Codex (CLI ou extensão) | Chat do Codex; aprove acesso à rede para `git`/`npm` se o sandbox bloquear | `codex` |
+| GitHub Copilot (VS Code) | Chat no modo **Agent** | `github-copilot` |
+| Cursor | Chat no modo **Agent** | `cursor` |
+| Antigravity | Chat do agente | `antigravity-cli` |
+
+Usa mais de uma ferramenta no mesmo projeto? Separe os IDs por vírgula, por
+exemplo `claude-code,codex`.
+
+```text
+Instale o agentic-stack-template (BMAD + Kent + Alethe) neste projeto, seguindo
+estas regras:
+
+1. Pré-requisitos: mostre as versões de git, Node.js (20.12+), npm, Python
+   (3.10+) e uv. Não instale Node.js nem Python; se faltarem, pare e me diga o
+   que instalar.
+2. Comando global: pergunte se já tenho um clone do template. Se sim, faça
+   git pull nele; se não, clone
+   https://github.com/JohnnyPessoli/agentic-stack-template.git em uma pasta
+   fora deste projeto. No clone, execute "node scripts/install.mjs --dry-run"
+   e depois "node scripts/install.mjs". Se houver conflitos, mostre-os e não
+   use --force sem a minha confirmação.
+3. Projeto: na raiz deste projeto, execute
+   node ~/.agentic-stack-template/bin/setup-agentic-stack.mjs --dry-run --tools <ID>
+   (no PowerShell, troque ~ por $HOME; não dependa do PATH). Mostre o resultado
+   e espere a minha confirmação. Depois execute o mesmo comando sem --dry-run.
+4. Não use --force, --install-uv, --update-bmad nem --enable-alethe-everywhere
+   sem me perguntar antes. Não leia .env nem arquivos de credenciais.
+5. Ao final, mostre o resumo do comando, o git status e o que preciso fazer
+   manualmente (por exemplo, reiniciar a sessão para as skills aparecerem).
+```
+
+Depois da instalação, **reinicie a sessão/janela da ferramenta**: skills
+novas só são carregadas ao abrir uma sessão. Nessa execução pelo agente, o
+instalador não altera o PATH nem ativa o modo global do Alethe; se quiser o
+comando `setup-agentic-stack` no terminal, rode o instalador global você mesmo
+(seção 1).
+
+Para **atualizar** um projeto que já usa o template, cole:
+
+```text
+Atualize o agentic-stack-template deste projeto: pergunte onde está meu clone
+do template (se eu não tiver, clone
+https://github.com/JohnnyPessoli/agentic-stack-template.git fora deste
+projeto), faça git pull nele e execute "node scripts/install.mjs". Depois, na
+raiz deste projeto, execute
+node ~/.agentic-stack-template/bin/setup-agentic-stack.mjs --dry-run
+(no PowerShell, troque ~ por $HOME). Se ele não detectar as ferramentas, use
+--tools com os IDs listados em "ides:" de _bmad/_config/manifest.yaml. Mostre o
+resultado, espere a minha confirmação e execute sem --dry-run. Não use --force
+nem outras flags de autorização sem me perguntar. Ao final, mostre o resumo e
+o git status.
+```
+
 ## 1. Instalar o comando global
 
 Clone este repositório e escolha o instalador do seu terminal:
@@ -377,7 +440,8 @@ e as próximas atualizações são automáticas.
 A versão 1.2.0 acrescenta o [bloco de instruções](#bloco-de-instruções-do-projeto)
 que faz o Alethe liderar e usar BMAD sem você nomear personas. Projetos
 configurados com versões anteriores (1.0.0, 1.1.0 ou scripts manuais) recebem
-essa mudança pelo mesmo comando, sem perder nada:
+essa mudança pelo mesmo comando, sem perder nada (ou peça ao seu agente com o
+[prompt de atualização](#instalar-pelo-seu-agente-de-ia)):
 
 1. **Atualize o comando global** (uma vez por máquina):
 
