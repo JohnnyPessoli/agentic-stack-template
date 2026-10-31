@@ -3,7 +3,7 @@
 **ID:** SPEC-20261025-001  
 **Data:** 2026-10-25  
 **Autor:** Usuário solicitante  
-**Status:** APROVADO — revisão 5
+**Status:** APROVADO — revisão 6
 
 ## 1. Contexto
 
@@ -156,7 +156,8 @@ corrigir; não prosseguir como se a etapa tivesse sucesso.
   antes de sugerir ou executar testes; não impor Vitest, diretórios,
   arquitetura, limiares ou contagens predefinidos.
 - Não criar `AGENTS.md`, `CONTEXT.md` ou outros arquivos de instrução do projeto
-  automaticamente se já não forem necessários à integração.
+  automaticamente se já não forem necessários à integração. Exceção definida
+  na revisão 6 (§11): bloco gerenciado em `AGENTS.md`/`CLAUDE.md`.
 - Copiar apenas arquivos de template versionados; não incluir o `config.user`
   pessoal da fonte original.
 
@@ -266,7 +267,7 @@ Escrever apenas arquivos enumerados pelo BMAD ou pelos templates do stack:
 - skill Alethe somente nos diretórios reconhecidos para os tools selecionados;
 - sem arquivos de projeto adicionais para orientação Alethe, salvo se a
   documentação upstream demonstrar que são necessários e a spec for atualizada
-  antes de implementá-los.
+  antes de implementá-los (demonstrado e especificado na revisão 6, §11).
 
 Não inventar uma interface que o BMAD/Alethe upstream não aceite. Se as
 interfaces fixadas não suportarem os requisitos de idioma, seleção, pinagem ou
@@ -455,6 +456,161 @@ de instalação no projeto.
 6. `--dry-run` mostra o estado do registro e o plano para `_bmad/custom` e Kent;
    o resumo informa a versão anterior, o registro gravado e arquivos obsoletos.
 
+## 11. Instruções de projeto para BMAD + Alethe (revisão 6)
+
+Aprovada pelo usuário em 2026-10-31, com o bloco ligado por padrão e a
+exigência de cobrir a atualização de projetos que já usam o template (§11.10).
+Implementada no template 1.2.0.
+
+### 11.1 Motivação
+
+O objetivo da stack é que Alethe atue como lead e use BMAD sem que a pessoa
+nomeie personas (§2.7.8). Na revisão pinada do Alethe, a regra gravada por
+`mode on --everywhere --rule` fica apenas no estado do próprio Alethe; o texto
+só chega ao agente quando um hook executa `orchestrate.py hook` a cada prompt
+(`references/operations.md`: “The Claude Code plugin runs it on every prompt”).
+O template copia somente `skills/alethe` e não instala hooks. Resultado: em
+nenhuma das cinco ferramentas a regra BMAD é aplicada automaticamente, e o
+README promete um comportamento que não ocorre.
+
+Hooks não existem de forma equivalente nas cinco ferramentas, e a edição local
+endurecida do Alethe proíbe instalá-los. Arquivos de instrução de projeto são o
+único mecanismo lido sempre por todas elas.
+
+### 11.2 Arquivos e ferramentas
+
+| Ferramenta selecionada | Arquivo na raiz do projeto-alvo |
+| --- | --- |
+| `codex`, `cursor`, `github-copilot`, `antigravity-cli` | `AGENTS.md` |
+| `claude-code` | `CLAUDE.md` |
+
+Cada arquivo recebe o bloco completo (sem `@AGENTS.md`), para não depender de
+semântica de importação nem carregar conteúdo alheio de `AGENTS.md`.
+
+### 11.3 Bloco gerenciado
+
+1. O conteúdo fica entre marcadores únicos:
+
+   ```markdown
+   <!-- agentic-stack:begin — gerenciado por setup-agentic-stack; edite fora deste bloco -->
+   ...
+   <!-- agentic-stack:end -->
+   ```
+
+2. Texto do bloco (em português; linhas condicionais indicadas):
+
+   ```markdown
+   ## Stack agêntica (BMAD + Alethe)
+
+   - [omitida com --skip-alethe] Atue como líder com a skill `alethe`: escolha entre
+     trabalhar diretamente ou delegar unidades independentes a workers CLI,
+     conforme o tamanho e a decomposição da tarefa. Não delegue toda tarefa.
+   - Este projeto tem BMAD (`_bmad/`): use os fluxos e personas BMAD relevantes
+     (produto, arquitetura, desenvolvimento) sem exigir que a pessoa os nomeie.
+     Não invoque personas em todos os pedidos.
+   - Para testes, siga a skill `bmad-agent-tdd` (Kent), respeitando o runner e
+     as convenções já existentes no projeto.
+   ```
+
+3. O bloco só é aplicado quando `_bmad/` existe ao final da etapa BMAD.
+   Arquivo ausente: criado contendo apenas o bloco. Arquivo existente sem
+   bloco: bloco acrescentado ao final, separado por uma linha em branco.
+   Conteúdo fora dos marcadores nunca é alterado. A quebra de linha
+   predominante do arquivo (LF/CRLF) é preservada.
+4. Marcadores duplicados, só um dos marcadores ou ordem invertida: não alterar
+   o arquivo; reportar conflito (mesmo com `--force`).
+5. `AGENTS.md`/`CLAUDE.md` que sejam links seguem §9.1: aceitos apenas se o
+   destino real estiver dentro do projeto.
+
+### 11.4 Atualização e registro (estende §10)
+
+O registro guarda o SHA-256 **do conteúdo do bloco**, não do arquivo inteiro,
+com chave `<arquivo>#agentic-stack`.
+
+| Estado do bloco | Ação |
+| --- | --- |
+| Igual ao novo | Nada |
+| Igual ao hash registrado | Substituir o bloco sem `--force` |
+| Diferente de ambos (editado) | Preservar; gravar `<arquivo>.new` com o arquivo completo já com o bloco novo |
+| Ausente, mas presente no registro | Tratar como removido pela pessoa: não readicionar, reportar; `--force` readiciona |
+| Ausente e sem registro | Acrescentar |
+
+`--force` substitui apenas o conteúdo entre os marcadores. O hash ignora a
+diferença LF/CRLF, para que a conversão pelo Git ou editor não conte como
+edição. Um `.new` gerado é removido quando fica idêntico ao arquivo resolvido.
+
+### 11.5 Contrato de opções
+
+- Nova opção `--skip-agent-instructions`: não criar nem alterar
+  `AGENTS.md`/`CLAUDE.md`.
+- `--skip-alethe` mantém o bloco, sem a linha do Alethe.
+- `--dry-run` lista, por arquivo, a ação prevista (criar, acrescentar,
+  atualizar, preservar, conflito) sem gravar.
+- O resumo final reporta o resultado de cada arquivo.
+
+### 11.6 Modo global do Alethe
+
+Mantém-se o comportamento de §2.7 (oferta com consentimento). O prompt e o
+README passam a explicar que a regra global só é aplicada por ferramentas com
+hook que execute `orchestrate.py hook`, e que o bloco do projeto é o mecanismo
+principal. O instalador continua sem instalar hooks.
+
+### 11.7 Documentação
+
+README PT/EN: a seção “Alethe como entrada padrão” descreve o bloco, a tabela
+de arquivos, como chamar Alethe explicitamente por ferramenta (`/alethe`,
+`$alethe`, linguagem natural) e como remover o bloco manualmente. A seção
+“Remover a configuração de um projeto” inclui o bloco.
+
+### 11.8 Testes
+
+| ID | Cenário | Resultado esperado |
+| --- | --- | --- |
+| T-18 | Projeto sem `AGENTS.md`/`CLAUDE.md`, tools `claude-code,codex` | Dois arquivos criados só com o bloco |
+| T-19 | `AGENTS.md` existente com conteúdo próprio | Bloco acrescentado; bytes anteriores intactos; EOL preservado |
+| T-20 | Reexecução sem mudanças | Nenhuma escrita; bloco não duplicado |
+| T-21 | Bloco editado pela pessoa | Preservado; `.new` gerado; `--force` substitui só o bloco |
+| T-22 | Bloco removido após registro | Não readicionado sem `--force`; aviso no resumo |
+| T-23 | Marcadores malformados | Arquivo intocado, conflito reportado, mesmo com `--force` |
+| T-24 | `--skip-agent-instructions`, `--skip-alethe`, `--dry-run` | Sem arquivos; bloco sem linha Alethe; nenhuma escrita |
+| T-25 | Link `AGENTS.md` para fora do projeto | Recusado sem escrita |
+
+### 11.9 Validação técnica pendente
+
+Confirmar, antes de afirmar no README, que cada ferramenta lê o arquivo
+indicado na raiz do projeto: Codex, Cursor e Copilot (`AGENTS.md`), Antigravity
+(`AGENTS.md`; se não ler, avaliar arquivo próprio em uma revisão futura) e
+Claude Code (`CLAUDE.md`). Validar qualitativamente o fluxo em pelo menos uma
+ferramenta, conforme §7.
+
+### 11.10 Atualização de projetos que já usam o template
+
+O template passa para a versão 1.2.0. Projetos configurados com 1.0.0, 1.1.0
+ou scripts manuais são atualizados pelo mesmo comando, sem passos destrutivos:
+
+1. **Comando global:** no clone, `git pull` e reexecutar o instalador do
+   sistema (`install.ps1`, `install.cmd` ou `install.sh`), seguindo §9.4.
+2. **Cada projeto:** na raiz, `setup-agentic-stack --dry-run` e depois
+   `setup-agentic-stack`, informando as mesmas ferramentas de antes com
+   `--tools` quando a detecção não as encontrar (a lista instalada está em
+   `ides:` de `_bmad/_config/manifest.yaml`).
+3. Sem entrada do bloco no registro (todas as instalações anteriores à 1.2.0),
+   o bloco é acrescentado/criado; arquivos `AGENTS.md`/`CLAUDE.md` existentes
+   mantêm todo o conteúdo próprio. Kent, `_bmad/custom` e Alethe seguem §10.
+4. O dry-run informa `Atualização <anterior> → 1.2.0` quando o registro tem
+   outra versão e aponta para a seção do README.
+5. Quem já escreveu orientação equivalente nos próprios arquivos pode revisar o
+   dry-run e usar `--skip-agent-instructions`, ou remover o bloco após a
+   primeira execução (não será readicionado, §11.4).
+6. O modo global já ativado continua como está; reexecutar não duplica a regra.
+7. Recomenda-se versionar `AGENTS.md`, `CLAUDE.md` e
+   `_bmad/_config/agentic-stack.json` no mesmo commit.
+8. README PT/EN ganham a seção “Atualizar projetos que já usam o template”,
+   com os passos acima e um exemplo para vários projetos em sequência.
+9. Teste T-26: projeto com registro 1.1.0 e `AGENTS.md` próprio — dry-run
+   anuncia a atualização sem gravar; execução real acrescenta o bloco e grava
+   `templateVersion` 1.2.0.
+
 ## Aprovação
 
 | Revisor | Status | Data | Comentários |
@@ -462,3 +618,4 @@ de instalação no projeto.
 | Usuário solicitante | ✅ Aprovado | 2026-10-25 | Aprovou a revisão 2 e autorizou implementação; confirmou manter opt-in global e a regra BMAD, com aviso de que `mode off --everywhere` limpa todas as regras/preferências globais (revisão 3). |
 | Usuário solicitante | ✅ Aprovado | 2026-10-27 | Aprovou a revisão 4 (§9): ajustes de robustez para projetos novos e em andamento. |
 | Usuário solicitante | ✅ Aprovado | 2026-10-27 | Aprovou a revisão 5 (§10): registro em `_bmad/_config/agentic-stack.json`, `.new` para arquivos editados e instalações sem registro tratadas como editadas. |
+| Usuário solicitante | ✅ Aprovado | 2026-10-31 | Aprovou a revisão 6 (§11): bloco gerenciado em `AGENTS.md`/`CLAUDE.md`, ligado por padrão, e orientação de atualização para projetos existentes (§11.10). |

@@ -6,26 +6,29 @@ macOS e Linux; não é necessário copiar scripts manualmente para cada projeto.
 
 **English:** [README in English](README.en.md).
 
-> O Alethe é o ponto de entrada padrão quando seu modo global é ativado. Você
-> pode descrever a tarefa em linguagem natural sem chamar uma persona BMAD pelo
-> nome. Alethe decide quando usar workflows/personas BMAD, quando trabalhar
-> diretamente e quando delegar partes independentes a workers CLI. Ele não
-> delega toda tarefa nem invoca uma persona BMAD em todos os pedidos.
+> O Alethe é o ponto de entrada padrão do projeto: o comando grava um bloco de
+> instruções em `AGENTS.md`/`CLAUDE.md`, lido por todas as ferramentas
+> suportadas. Você pode descrever a tarefa em linguagem natural sem chamar uma
+> persona BMAD pelo nome. Alethe decide quando usar workflows/personas BMAD,
+> quando trabalhar diretamente e quando delegar partes independentes a workers
+> CLI. Ele não delega toda tarefa nem invoca uma persona BMAD em todos os
+> pedidos.
 
 ## Como BMAD, Kent, Alethe e workers se complementam
 
 | Componente | O que faz | O que não significa |
 | --- | --- | --- |
-| **Alethe** | Atua como lead/orquestrador padrão quando o modo global é autorizado. Interpreta o pedido, escolhe orientação pertinente e decide entre trabalho direto ou delegação. | Não é uma persona BMAD. Não exige paralelismo em toda tarefa. |
+| **Alethe** | Atua como lead/orquestrador padrão pelo bloco de instruções do projeto. Interpreta o pedido, escolhe orientação pertinente e decide entre trabalho direto ou delegação. | Não é uma persona BMAD. Não exige paralelismo em toda tarefa. |
 | **BMAD** | Fornece método, workflows e personas especializadas, como arquitetura, desenvolvimento e produto. | Não é o orquestrador de workers desta stack. |
 | **Kent** | Persona de TDD que descobre e respeita o runner e as convenções que já existem no projeto. | Não instala Vitest/Jest/pytest, não impõe diretórios nem limites de cobertura. |
 | **Worker CLI** | Ferramenta externa que pode executar uma unidade delegada por Alethe. | Um worker não é automaticamente uma persona ou workflow BMAD. |
 
-O instalador coloca a skill Alethe nas pastas das ferramentas selecionadas e,
-se você consentir, ativa o modo global oficial do Alethe e adiciona uma regra
-condicional para selecionar BMAD quando o projeto tiver BMAD. A ativação global
-vale para todos os seus projetos e não expira. O comportamento final também
-depende da IDE e do agente que você usa.
+O instalador coloca a skill Alethe nas pastas das ferramentas selecionadas e
+grava no projeto o bloco de instruções que liga Alethe, BMAD e Kent. Se você
+consentir, também ativa o modo global oficial do Alethe com a mesma regra; essa
+ativação vale para todos os seus projetos e não expira, mas só chega ao agente
+em ferramentas com hook do Alethe. O comportamento final também depende da IDE
+e do agente que você usa.
 
 ## Pré-requisitos
 
@@ -178,6 +181,9 @@ seleção desejada. Essa opção substitui a detecção; não instala a IDE.
    consentimento separado para ativar o modo em todos os projetos e adicionar
    a regra BMAD. Recusar mantém a instalação local, sem alterar a configuração
    global.
+6. **Instruções de projeto:** grava o bloco BMAD + Alethe em `AGENTS.md`
+   (Codex, Cursor, GitHub Copilot, Antigravity) e/ou `CLAUDE.md` (Claude Code).
+   Veja [Alethe como entrada padrão](#alethe-como-entrada-padrão).
 
 ## Opções do comando
 
@@ -190,6 +196,7 @@ seleção desejada. Essa opção substitui a detecção; não instala a IDE.
 --update-bmad                 Atualizar BMAD existente pela ação oficial pinada
 --skip-alethe                 Não instalar Alethe nem tocar no modo global
 --enable-alethe-everywhere    Autorizar ativação global sem prompt
+--skip-agent-instructions     Não criar nem alterar o bloco em AGENTS.md/CLAUDE.md
 --help                        Mostrar ajuda
 ```
 
@@ -210,7 +217,53 @@ criou não existe mais.
 
 ## Alethe como entrada padrão
 
-Ao aceitar a ativação global, o comando usa a interface oficial equivalente a:
+### Bloco de instruções do projeto
+
+O mecanismo que liga Alethe e BMAD é um bloco gerenciado gravado na raiz do
+projeto, no arquivo que cada ferramenta lê sempre:
+
+| Ferramenta | Arquivo |
+| --- | --- |
+| Codex, Cursor, GitHub Copilot, Antigravity | `AGENTS.md` |
+| Claude Code | `CLAUDE.md` |
+
+```markdown
+<!-- agentic-stack:begin — gerenciado por setup-agentic-stack; edite fora deste bloco -->
+## Stack agêntica (BMAD + Alethe)
+
+- Atue como líder com a skill `alethe`: escolha entre trabalhar diretamente ou
+  delegar unidades independentes a workers CLI, conforme o tamanho e a
+  decomposição da tarefa. Não delegue toda tarefa.
+- Este projeto tem BMAD (`_bmad/`): use os fluxos e personas BMAD relevantes
+  (produto, arquitetura, desenvolvimento) sem exigir que a pessoa os nomeie.
+  Não invoque personas em todos os pedidos.
+- Para testes, siga a skill `bmad-agent-tdd` (Kent), respeitando o runner e as
+  convenções já existentes no projeto.
+<!-- agentic-stack:end -->
+```
+
+- Se o arquivo não existe, é criado só com o bloco; se existe, o bloco vai
+  para o final e nada fora dos marcadores é alterado. LF/CRLF é preservado.
+- Com `--skip-alethe`, o bloco é gravado sem a linha do Alethe. Com
+  `--skip-agent-instructions`, nenhum desses arquivos é tocado.
+- Atualizações seguem a mesma regra dos demais arquivos do template: bloco não
+  editado é atualizado sozinho; bloco editado é preservado e a versão nova vai
+  para `AGENTS.md.new`/`CLAUDE.md.new`; `--force` substitui só o bloco.
+- Se você apagar o bloco, ele não é readicionado nas próximas execuções (use
+  `--force` se mudar de ideia).
+- Versione `AGENTS.md`/`CLAUDE.md` com o projeto.
+
+O bloco é uma instrução para o modelo, não uma garantia. Para acionar Alethe
+explicitamente: `/alethe <tarefa>` no Claude Code, Copilot e Cursor;
+`$alethe <tarefa>` no Codex; ou, em qualquer ferramenta, “use a skill alethe
+para …”.
+
+### Modo global (opcional)
+
+O modo global do Alethe só é aplicado por ferramentas que executam o hook do
+Alethe a cada prompt; o template não instala hooks. Por isso, o bloco do
+projeto é o mecanismo principal. Ao aceitar a ativação global, o comando usa a
+interface oficial equivalente a:
 
 ```text
 mode on --everywhere --rule "<instrução condicional BMAD>"
@@ -245,7 +298,7 @@ preferências.
 ## Exemplo de uso
 
 Imagine um repositório existente de catálogo de livros. Depois de preparar o
-projeto e aceitar o modo global, peça:
+projeto, peça:
 
 > Quero exportar para CSV os livros que aparecem depois de aplicar os filtros
 > da tela. Antes de implementar, identifique as decisões de contrato e como
@@ -319,6 +372,67 @@ têm histórico: arquivos divergentes são tratados como editados e preservados,
 com o `.new` ao lado. Depois de revisá-los uma vez, o registro passa a existir
 e as próximas atualizações são automáticas.
 
+### Atualizar projetos que já usam o template
+
+A versão 1.2.0 acrescenta o [bloco de instruções](#bloco-de-instruções-do-projeto)
+que faz o Alethe liderar e usar BMAD sem você nomear personas. Projetos
+configurados com versões anteriores (1.0.0, 1.1.0 ou scripts manuais) recebem
+essa mudança pelo mesmo comando, sem perder nada:
+
+1. **Atualize o comando global** (uma vez por máquina):
+
+   ```sh
+   cd caminho/do/agentic-stack-template
+   git pull
+   ./install.sh        # ou .\install.ps1 / install.cmd
+   ```
+
+2. **Em cada projeto**, na raiz, revise e aplique:
+
+   ```sh
+   setup-agentic-stack --dry-run
+   setup-agentic-stack
+   ```
+
+   O dry-run mostra `Atualização 1.1.0 → 1.2.0` e o que acontecerá com
+   `AGENTS.md`/`CLAUDE.md`. Se a detecção não encontrar as mesmas ferramentas
+   de antes, informe-as com `--tools`; a lista instalada está em `ides:` de
+   `_bmad/_config/manifest.yaml`.
+
+3. **Confira e versione** `AGENTS.md`, `CLAUDE.md` e
+   `_bmad/_config/agentic-stack.json` no mesmo commit.
+
+O que acontece nessa atualização:
+
+| Situação no projeto | Resultado |
+| --- | --- |
+| Sem `AGENTS.md`/`CLAUDE.md` | Arquivo criado só com o bloco |
+| `AGENTS.md`/`CLAUDE.md` com conteúdo próprio | Bloco acrescentado ao final; seu conteúdo fica intacto |
+| Você já escreveu orientação parecida | Revise o dry-run; use `--skip-agent-instructions` ou apague o bloco depois (ele não volta) |
+| Kent, `_bmad/custom`, Alethe | Seguem a tabela da seção anterior |
+| Modo global Alethe já ativado | Continua igual; a regra não é duplicada |
+
+Para vários projetos em sequência, rode primeiro só o dry-run, revise a saída e
+depois repita sem `--dry-run`:
+
+```powershell
+# PowerShell
+foreach ($p in "C:\Projetos\app-a", "C:\Projetos\app-b") {
+  setup-agentic-stack --target $p --dry-run
+}
+```
+
+```sh
+# Git Bash, macOS ou Linux
+for p in ~/projetos/app-a ~/projetos/app-b; do
+  setup-agentic-stack --target "$p" --dry-run
+done
+```
+
+Sem `--dry-run`, cada projeto continua perguntando sobre `uv` e o modo global
+no terminal; se o modo global já estiver ativado, basta responder “não”. Em
+execução não interativa, nada disso acontece sem as flags explícitas.
+
 ### Remover o comando global
 
 O template não fornece um comando de desinstalação que apague diretórios sem
@@ -336,7 +450,9 @@ preferências do modo global, não apenas a regra BMAD.
 Não há remoção automática: BMAD, Alethe e as customizações podem ter sido
 editados depois da instalação. Revise e remova manualmente apenas arquivos
 gerenciados que você reconhece, incluindo `_bmad/_config/agentic-stack.json`. O script não apaga `_bmad/`, diretórios de
-skills, customizações ou dados do projeto.
+skills, customizações ou dados do projeto. Em `AGENTS.md`/`CLAUDE.md`, apague
+apenas o trecho entre `<!-- agentic-stack:begin` e `<!-- agentic-stack:end -->`
+(inclusive) e o arquivo, se ele só tinha o bloco.
 
 ## Solução de problemas
 
@@ -356,6 +472,11 @@ skills, customizações ou dados do projeto.
 - **Alethe já existe:** os arquivos divergentes são preservados. Revise-os e
   repita com `--force` somente se deseja substituir arquivos da skill.
 - **BMAD não atualizou:** sem `--update-bmad`, `_bmad/` não é atualizado.
+- **Marcadores `agentic-stack` incompletos ou duplicados:** o arquivo de
+  instruções não é alterado, nem com `--force`. Deixe um único par
+  begin/end (ou remova ambos) e execute de novo.
+- **Agente não segue o bloco:** confirme que abriu a raiz do projeto como
+  workspace e acione explicitamente com `/alethe` ou `$alethe`.
 - **Conflito ou caminho simbólico:** o comando informa o caminho e não segue
   links simbólicos para fora do projeto. Junctions entre pastas de skills do
   próprio projeto são aceitas.

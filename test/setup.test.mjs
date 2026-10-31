@@ -33,6 +33,7 @@ import {
   resolveTarget,
   runSetup,
   templateRoot,
+  VERSION,
 } from "../lib/setup.mjs";
 import { hashBytes, readRegistry, registryPath, writeRegistry } from "../lib/registry.mjs";
 
@@ -258,7 +259,7 @@ test("re-running setup over an older install updates untouched files and preserv
 
   assert.equal(await setup(), 0);
   const firstRegistry = readRegistry(project);
-  assert.equal(firstRegistry.templateVersion, "1.1.0");
+  assert.equal(firstRegistry.templateVersion, VERSION);
   assert.ok(firstRegistry.files[key(kent, "SKILL.md")]);
 
   // Simula uma instalação de versão anterior: um arquivo intacto, outros editados
@@ -277,7 +278,7 @@ test("re-running setup over an older install updates untouched files and preserv
 
   output.length = 0;
   assert.equal(await setup(), 0);
-  assert.ok(output.some((line) => line.includes("template 1.0.0; aplicando a versão 1.1.0")));
+  assert.ok(output.some((line) => line.includes(`template 1.0.0; aplicando a versão ${VERSION}`)));
   assert.equal(readFileSync(path.join(custom, "bmad-agent-dev.toml"), "utf8"), template("custom", "bmad-agent-dev.toml"));
   assert.equal(readFileSync(path.join(custom, "bmad-agent-pm.toml"), "utf8"), "team edit");
   assert.equal(readFileSync(path.join(custom, "bmad-agent-pm.toml.new"), "utf8"), template("custom", "bmad-agent-pm.toml"));
